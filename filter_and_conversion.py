@@ -1,6 +1,9 @@
 import dataclasses
 
-from music import get_absolute_tone_inventory, GongcheMelodySymbol, GongdiaoStep, get_relative_tone_inventory
+import numpy as np
+
+from music import get_absolute_tone_inventory, GongcheMelodySymbol, GongdiaoStep, get_relative_tone_inventory, \
+    absolute_pitch_to_interval, relative_pitch_to_absolute_pitch
 
 
 def filter_by_gong(pieces, gong_lvlv_array):
@@ -73,3 +76,12 @@ def add_mgong(mgong, n_pitch, index_array):
         return output_array[0] if single_value else output_array
     except (ValueError, IndexError):
         return None
+
+
+def relative_pitch_to_interval(mode_properties, relative_pitch_list):
+    return absolute_pitch_to_interval(mode_properties,
+                                          relative_pitch_to_absolute_pitch(mode_properties, relative_pitch_list))
+
+
+def relative_pitch_to_contour(mode_properties, relative_pitch_list):
+    return np.sign(relative_pitch_to_interval(mode_properties, relative_pitch_list))

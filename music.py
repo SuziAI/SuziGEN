@@ -1,5 +1,8 @@
 import dataclasses
 
+import numpy as np
+
+
 @dataclasses.dataclass
 class SuzipuAdditionalSymbol:
     ADD_NONE: None = None
@@ -586,3 +589,27 @@ SimpleSecondaryList = [
     SuzipuAdditionalSymbol.ADD_ZHE,
     SuzipuAdditionalSymbol.ADD_YE
 ]
+
+def absolute_pitch_to_interval(mode_properties, absolute_pitch_list):
+    tone_inventory = get_tone_inventory(mode_properties["gong_lvlv"])
+
+    ctr = 0
+    for idx in range(len(tone_inventory)):
+        if tone_inventory[idx] is not None:
+            tone_inventory[idx] = ctr
+            ctr += 1
+
+    index_list = []
+    for pitch in absolute_pitch_list:
+        index_list.append(tone_inventory[GongcheMelodySymbol.to_index(pitch)])
+    # index_list.reverse()
+    index_list = np.array(index_list)
+    intervals = index_list[1:] - index_list[:-1]
+    return np.array(intervals, dtype=np.int8)
+
+
+def relative_pitch_to_absolute_pitch(mode_properties, relative_pitch_list):
+    absolute_pitch_list = []
+    for pitch in relative_pitch_list:
+        absolute_pitch_list.append(tone_inventory_convert_pitch(mode_properties["gong_lvlv"], pitch))
+    return absolute_pitch_list

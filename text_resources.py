@@ -43,3 +43,10 @@ class EnglishTexts:
     mode_final_note: str = (
         "This mode's final note is {final_note}, which is also the final note of these pieces: {final_note_list}."
     )
+
+    initial_state: str = (
+        "Now, I will generate the pitches for you. Since the piece's ending is determined by the mode, "
+        "I will first generate the cadential phrase at the end, consisting of three notes. "
+        "According to the mode, the piece must end with {final_note}. Therefore, "
+        "I chose {cadential_phrase} for you. This happens with a probability of {probability:.1f}%."
+    )

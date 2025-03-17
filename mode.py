@@ -66,4 +66,5 @@ def generate_mode(pieces):
 
     return {"mgong": str(mgong),
             "mfinal": str(mfinal),
-            "description": description_string}
+            "description": description_string,
+            "probability": total_probability}

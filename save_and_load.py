@@ -4,7 +4,10 @@ import numpy as np
 import os
 import pickle
 
-from music import get_tone_inventory, tone_inventory_convert_pitch, GongcheMelodySymbol
+from music import get_tone_inventory, tone_inventory_convert_pitch, GongcheMelodySymbol, \
+    relative_pitch_to_absolute_pitch, absolute_pitch_to_interval
+from pitch_and_secondary import get_contour_distributions, get_initial_state_distributions, get_function_distributions, \
+    get_pitch_transition_probabilities
 
 
 def build_17_pieces_data():
@@ -111,42 +114,12 @@ def build_17_pieces_data():
             index_list.append(pitch_to_index[pitch])
         return index_list
 
-    def relative_pitch_to_absolute_pitch(mode_properties, relative_pitch_list):
-        absolute_pitch_list = []
-        for pitch in relative_pitch_list:
-            absolute_pitch_list.append(tone_inventory_convert_pitch(mode_properties["gong_lvlv"], pitch))
-        return absolute_pitch_list
-
     def absolute_pitch_to_function(mode_properties, absolute_pitch_list):
         tone_inventory = get_tone_inventory(mode_properties["gong_lvlv"])
         function_list = []
         for pitch in absolute_pitch_list:
             function_list.append(tone_inventory[GongcheMelodySymbol.to_index(pitch)])
         return function_list
-
-    def absolute_pitch_to_interval(mode_properties, absolute_pitch_list):
-        tone_inventory = get_tone_inventory(mode_properties["gong_lvlv"])
-
-        ctr = 0
-        for idx in range(len(tone_inventory)):
-            if tone_inventory[idx] is not None:
-                tone_inventory[idx] = ctr
-                ctr += 1
-
-        index_list = []
-        for pitch in absolute_pitch_list:
-            index_list.append(tone_inventory[GongcheMelodySymbol.to_index(pitch)])
-        # index_list.reverse()
-        index_list = np.array(index_list)
-        intervals = index_list[1:] - index_list[:-1]
-        return np.array(intervals, dtype=np.int8)
-
-    def relative_pitch_to_interval(mode_properties, relative_pitch_list):
-        return absolute_pitch_to_interval(mode_properties,
-                                          relative_pitch_to_absolute_pitch(mode_properties, relative_pitch_list))
-
-    def relative_pitch_to_contour(mode_properties, relative_pitch_list):
-        return np.sign(relative_pitch_to_interval(mode_properties, relative_pitch_list))
 
     FULL_PAUSE = [".", "。", "?", "？", ":", "："]
     PAUSE = [",", "，", "、"]
@@ -222,3 +195,22 @@ def load_17_pieces_data():
         all_pieces = pickle.load(file_handle)
         all_pieces_yanyue = [piece for piece in all_pieces if piece["title"] not in ("角招", "徴招")]
         return {"all": all_pieces, "yanyue": all_pieces_yanyue}
+
+def load_probabilities():
+    pieces = load_17_pieces_data()
+    if not os.path.exists("probabilities.pkl"):
+        contour_distributions = get_contour_distributions(pieces)
+        initial_state_distributions = get_initial_state_distributions(pieces)
+        function_distributions = get_function_distributions(pieces)
+        pitch_transition_probabilities = get_pitch_transition_probabilities(pieces)
+        with open("probabilities.pkl", "wb") as file_handle:
+            pickle.dump({
+                "contour_distributions": contour_distributions,
+                "initial_state_distributions": initial_state_distributions,
+                "function_distributions": function_distributions,
+                "pitch_transition_probabilities": pitch_transition_probabilities
+            }, file_handle)
+
+    with open("probabilities.pkl", "rb") as file_handle:
+        probabilities = pickle.load(file_handle)
+        return probabilities

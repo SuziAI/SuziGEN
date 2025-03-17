@@ -1,2 +1,7 @@
 *.pdf
 *.mp3
+*.idea
+.ipynb_checkpoints
+KuiSCIMA
+__pycache__
+*.pkl
