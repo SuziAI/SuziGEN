@@ -19,7 +19,7 @@ class Distribution:
             else:
                 corrected_sample_space.append(state)
 
-        relative_frequencies = np.array(absolute_frequencies)/sum(absolute_frequencies)
+        relative_frequencies = np.array(absolute_frequencies)/np.array(absolute_frequencies).sum()
         self.distribution = {sample: float(probability) for sample, probability in zip(corrected_sample_space, relative_frequencies)}
 
     def __repr__(self):
@@ -93,6 +93,11 @@ class Distribution:
         extended = self.extend_to_same_space(self, new_distribution)
         self.distribution = extended[0].distribution
         return self
+
+    def restrict_space(self, new_sample_space):
+        if not set(new_sample_space).issubset(set(self.distribution.keys())):
+            raise ValueError("Can only restrict the sample space to a subspace of the sample space.")
+        return Distribution.from_dict({key: value for key, value in zip(self.distribution.keys(), self.distribution.values()) if key in new_sample_space})
 
     # RV X on A (distribution P), RV Y on B (distribution B), f: A -> B. Calculate P[X = x | f(x) =^d Y]
     def get_conditioned_on_Q(self, dist_q, f):
