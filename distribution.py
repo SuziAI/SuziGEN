@@ -123,15 +123,17 @@ class Distribution:
 
         # Compute Z_y for each y
         Z = {y: sum(self[x] for x in group) for y, group in groups.items()}
+        Z_sum = sum([dist_q_restricted[y]*Z[y] for y in reachable_y])
 
         # Compute R(x)
         R = {}
         for x in self.sample_space():
             y = f(x)
-            R[x] = dist_q_restricted[y] * self[x] / Z[y] if Z[y] > 1e-8 else 0
+            R[x] = dist_q_restricted[y] * self[x] / Z_sum if y is not None else 0.
 
         # for exact sum == 1
         R_SUM = sum(R.values())
+        print(R_SUM)
         for x in self.sample_space():
             R[x] = R[x] / R_SUM
 
