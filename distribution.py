@@ -133,7 +133,6 @@ class Distribution:
 
         # for exact sum == 1
         R_SUM = sum(R.values())
-        print(R_SUM)
         for x in self.sample_space():
             R[x] = R[x] / R_SUM
 
