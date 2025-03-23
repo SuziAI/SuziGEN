@@ -53,8 +53,26 @@ class EnglishTexts:
     )
 
     second_stanza_pitch_normal_case: str = (
-        "For this type of piece, the second stanza has the most freedom, since the repetition pattern does not affect "
+        "For this type of piece, the second stanza has the most freedom, since the repetition pattern does not yet affect "
         "the generated pitches. The probability for the pitches I chose for you in the second stanza is {probability:,.5g}."
+    )
+
+    second_stanza_pitch_intrastrophal_case_cd: str = (
+        "For this type of piece, the last half of the second stanza (with the form CD) has the most freedom, "
+        "since the repetition pattern does not yet affect the generated pitches. "
+        "The probability for the pitches I chose for you here is {probability:,.5g}."
+    )
+
+    second_stanza_pitch_intrastrophal_case_cb: str = (
+        "In the first half of the second stanza (with the form CB), the C part has already been determined by "
+        "our previous generation step. In addition, the first stanza ends on the three final pitches of B, "
+        "so we sample it as the cadential phrase {cadential_phrase}, which has a probability of {cadential_probability:.1f}%. "
+        "The other pitches I chose for you in B have the probability {pitch_probability:,.5g}."
+    )
+
+    second_stanza_pitch_intrastrophal_case_ab: str = (
+        "The first stanza has the form ABAB, where we have already determined B in the previous step. "
+        "The pitches I generated for A have a probability of {probability:,.5g}."
     )
 
     first_stanza_pitch_initial_state_with_repetition: str = (

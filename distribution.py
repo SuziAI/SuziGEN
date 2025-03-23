@@ -86,7 +86,9 @@ class Distribution:
 
     def sample(self):
         sample_idxs = range(len(self.distribution.keys()))
-        return list(self.distribution.keys())[np.random.choice(sample_idxs, 1, p=list(self.distribution.values()))[0]]
+        p_list = list(self.distribution.values())
+        p_list = [p if not np.isnan(p) else 0. for p in p_list]
+        return list(self.distribution.keys())[np.random.choice(sample_idxs, 1, p=p_list)[0]]
 
     def extend_space(self, new_sample_space):
         new_distribution = Distribution(new_sample_space)

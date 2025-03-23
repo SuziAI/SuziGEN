@@ -187,13 +187,18 @@ def get_initial_state_distributions(pieces):
     return initial_state_distributions
 
 
-def get_pitch_initial_state(initial_state_distributions, contour_distributions, cipai, mode):
+def get_pitch_initial_state(initial_state_distributions, contour_distributions, cipai, mode, start_idx=0):
     mgong_0, mfinal_0 = mode["mgong"], mode["mfinal"]
 
     retrograde_cipai = cipai["tones"][::-1]
 
-    tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0].get_conditioned_on_Q(contour_distributions["all"][tuple(retrograde_cipai[0:3])],
-                                                                                                      pitch_triple_to_contour(mgong_0))
+    try:
+        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0].get_conditioned_on_Q(
+            contour_distributions["all"][tuple(retrograde_cipai[start_idx:start_idx+3])],
+            pitch_triple_to_contour(mgong_0)
+        )
+    except ZeroDivisionError:
+        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0]
 
     initial_state = tone_dependent_distribution.sample()
 
@@ -766,7 +771,8 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
             initial_state_distributions=initial_state_distributions,
             contour_distributions=contour_distributions,
             cipai=cipai,
-            mode=mode
+            mode=mode,
+            start_idx=pian_idx
         )
 
         description_string += first_stanza_initial["description_first"] + " "
@@ -924,6 +930,10 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
                 cd_probability *= distr[generated_piece[idx]]
                 idx += 1
 
+        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_cd.format(
+            probability = cd_probability
+        ) + " "
+
         # Fill C in the CB part
         c_idxs_cb = [idx for idx in half_stanza_cb if retrograde_repetition[idx] == "3"]
         c_idxs_cd = [idx for idx in half_stanza_cd if retrograde_repetition[idx] == "3"]
@@ -931,18 +941,32 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
             generated_piece[c_idx_cb] = generated_piece[c_idx_cd]
 
         # Generate B part in CB. By construction of the repetition, the B part is at least 3 syllables long,
-        # so we can safely put the last pitch of B to be the final pitch. For easier computability,
-        # we won't generate a whole cadential phrase, which we would have to condition both on the C part and
-        # the A part which is not generated until the very end. However, since any cadential phrase ends with the
-        # final pitch, we navigate around those complicated conditioning processes while still maintaining the
-        # Markov chain dynamics (although we pay the price that the last three notes of B might not be a
-        # cadential phrase that actually has occurred in the real pieces).
+        # so we generate a cadential phrase for the ending of the first stanza.
+
+        first_stanza_initial = get_pitch_initial_state(
+            initial_state_distributions=initial_state_distributions,
+            contour_distributions=contour_distributions,
+            cipai=cipai,
+            mode=mode,
+            start_idx=pian_idx
+        )
+
+        b_ending_probability = first_stanza_initial["probability"]
+        first_stanza_initial = first_stanza_initial["initial_state"]
 
         all_cb_gaps = [idx for idx in half_stanza_cb if generated_piece[idx] is None]
         b_idxs_cb = [idx for idx in half_stanza_cb if retrograde_repetition[idx] == "2"]
 
-        generated_piece[b_idxs_cb[0]] = f_S_to_N(mfinal, mgong)[0] # we take the lower one
-        del all_cb_gaps[all_cb_gaps.index(b_idxs_cb[0])]
+        try:
+            # B might be a bit scattered in the second stanza!
+            generated_piece[b_idxs_cb[0]] = first_stanza_initial[0]
+            generated_piece[b_idxs_cb[1]] = first_stanza_initial[1]
+            generated_piece[b_idxs_cb[2]] = first_stanza_initial[2]
+            del all_cb_gaps[all_cb_gaps.index(b_idxs_cb[0])]
+            del all_cb_gaps[all_cb_gaps.index(b_idxs_cb[1])]
+            del all_cb_gaps[all_cb_gaps.index(b_idxs_cb[2])]
+        except Exception:
+            pass
 
         # all_cb_gaps possibly consists of multiple contiguous areas that must be filled, so we separate them
         cb_gaps = []
@@ -972,6 +996,12 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
             else:
                 cb_probability *= fill_by_using_matrix_products(gap_list)
 
+        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_cb.format(
+            cadential_phrase=first_stanza_initial,
+            cadential_probability=b_ending_probability*100,
+            pitch_probability=cb_probability
+        ) + " "
+
         # Now, fill in the b parts in the first stanza
         half_stanza_ab_last = first_stanza_indices[:len(first_stanza_indices) // 2]
         half_stanza_ab_first = first_stanza_indices[len(first_stanza_indices) // 2:]
@@ -999,7 +1029,11 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
         for a_idx_first, a_idx_last in zip(a_idxs_ab_first, a_idxs_ab_last):
             generated_piece[a_idx_first] = generated_piece[a_idx_last]
 
-        probability *= cd_probability * cb_probability * ab_probability
+        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_ab.format(
+            probability=ab_probability
+        ) + "\n\n"
+
+        probability *= cd_probability * b_ending_probability * cb_probability * ab_probability
 
 
     generated_piece.reverse()
