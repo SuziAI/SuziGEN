@@ -6,7 +6,8 @@ class EnglishTexts:
     )
     repetitions_intrastrophal: str = (
         "The cipai you provided has a special structure! "
-        "The first stanza consists of two parts with equal metrical structure. "
+        "The first stanza consists of two parts with equal metrical structure and high agreement of "
+        "the Chinese syllable tones which is {tonal_agreement:.1f}%. "
         "Therefore, I chose a repetition pattern for you that has a special form, "
         "which is ABAB/CBCD. In Baishidaoren Gequ, this happens only in the piece "
         "秋宵吟 (Qiuxiaoyin)."
@@ -44,9 +45,39 @@ class EnglishTexts:
         "This mode's final note is {final_note}, which is also the final note of these pieces: {final_note_list}."
     )
 
-    initial_state: str = (
+    second_stanza_pitch_initial_state: str = (
         "Now, I will generate the pitches for you. Since the piece's ending is determined by the mode, "
         "I will first generate the cadential phrase at the end, consisting of three notes. "
         "According to the mode, the piece must end with {final_note}. Therefore, "
         "I chose {cadential_phrase} for you. This happens with a probability of {probability:.1f}%."
+    )
+
+    second_stanza_pitch_normal_case: str = (
+        "For this type of piece, the second stanza has the most freedom, since the repetition pattern does not affect "
+        "the generated pitches. The probability for the pitches I chose for you in the second stanza is {probability:,.5g}."
+    )
+
+    first_stanza_pitch_initial_state_with_repetition: str = (
+        "Since there is no repetition inside the cadential phrase of the first stanza, "
+        "I generated {cadential_phrase}, which has a probability of {probability:.1f}%."
+    )
+
+    first_stanza_pitch_initial_state_without_repetition: str = (
+        "For the first stanza's cadential phrase, "
+        "I generated {cadential_phrase}, which for the given repetition pattern has a probability of {probability:.1f}%."
+    )
+
+    first_stanza_pitch_normal_case: str = (
+        "Due to the repetitions, the first stanza has restricted possibilities for the pitches that fill the gaps. "
+        "I chose some pitches that have a probability of {probability:,.3g}."
+    )
+
+    both_stanzas_pitch_no_repetition_case: str = (
+        "Because there is no specific repetition pattern inside this piece, I simply generate all missing pitches for you"
+        ", which has a probability of {probability:,.5g}"
+        "."
+    )
+
+    final_text: str = (
+        "Wow, given the repetition pattern, your personal piece is generated with a chance of around 1 : 1{int_probability:,} ({total_probability:,.5g})!"
     )

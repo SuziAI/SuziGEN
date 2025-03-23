@@ -324,11 +324,14 @@ def generate_repetition(input_cipai):
         description_string = EnglishTexts.repetitions_none.format(prob=2/17*100)
         return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
 
-    # Quixiaoyin case with intra-strophal repetition and high compatibility between the first two half-stanzas
+    # Qiuxiaoyin case with intra-strophal repetition and high compatibility between the first two half-stanzas
     if first_stanza_structure[0:len(first_stanza_structure) // 2] == first_stanza_structure[
                                                                      len(first_stanza_structure) // 2:] and (
             np.array(first_stanza_tones[:len(first_stanza_tones) // 2]) == np.array(
         first_stanza_tones[len(first_stanza_tones) // 2:])).mean() > 0.85:
+
+        tonal_agreement = (np.array(first_stanza_tones[:len(first_stanza_tones) // 2]) == np.array(first_stanza_tones[len(first_stanza_tones) // 2:])).mean()
+
         half_stanza_1 = first_stanza_tones[:len(first_stanza_tones) // 2]  # A B
         # half_stanza_2 = first_stanza_tones[len(first_stanza_tones)//2:]  # A B
         half_stanza_3 = second_stanza_tones[:len(second_stanza_tones) // 2]  # C B
@@ -343,80 +346,82 @@ def generate_repetition(input_cipai):
         tones2_d = half_stanza_4[len(half_stanza_4) // 2:]  # D
 
         length_b = min(len(tones_b), len(tones2_b))
-        length_b = np.random.randint(length_b // 2, length_b - 2) if length_b > 2 else 0
-        length_c = min(len(tones2_c), len(tones2_c2))
-        length_c = np.random.randint(length_c // 2, length_c - 2) if length_c > 2 else 0
+        if length_b >= 6:  # we want to have a B part that has at least 3 entries so it can form a full cadential phrase
+            length_b = np.random.randint(length_b // 2, length_b - 2) if length_b > 2 else 0
+            length_c = min(len(tones2_c), len(tones2_c2))
+            length_c = np.random.randint(length_c // 2, length_c - 2) if length_c > 2 else 0
 
-        first_stanza_1_a = "".join(["1" for tone in tones_a])
-        first_stanza_1_b = ["1" for tone in tones_b]
-        first_stanza_1_b[-length_b:] = ["2"] * length_b
-        first_stanza_1_b = "".join(first_stanza_1_b)
-        first_stanza = first_stanza_1_a + first_stanza_1_b + first_stanza_1_a + first_stanza_1_b
+            first_stanza_1_a = "".join(["1" for tone in tones_a])
+            first_stanza_1_b = ["1" for tone in tones_b]
+            first_stanza_1_b[-length_b:] = ["2"] * length_b
+            first_stanza_1_b = "".join(first_stanza_1_b)
+            first_stanza = first_stanza_1_a + first_stanza_1_b + first_stanza_1_a + first_stanza_1_b
 
-        second_stanza_1_c = ["3" for tone in tones2_c]
-        num_dots = len(second_stanza_1_c) - length_c
-        head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
-        intermediate_len = np.random.randint(0, 3)
-        tail_len = num_dots - head_len - intermediate_len
-        if head_len:
-            second_stanza_1_c[0:head_len] = "." * head_len
-        if tail_len:
-            second_stanza_1_c[-tail_len:] = "." * tail_len
-        if intermediate_len:
-            intermediate_idx = random.sample(range(head_len, len(second_stanza_1_c) - tail_len), intermediate_len)
-            for iidx in intermediate_idx:
-                second_stanza_1_c[iidx] = "."
-        second_stanza_1_c = "".join(second_stanza_1_c)
+            second_stanza_1_c = ["3" for tone in tones2_c]
+            num_dots = len(second_stanza_1_c) - length_c
+            head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
+            intermediate_len = np.random.randint(0, 3)
+            tail_len = num_dots - head_len - intermediate_len
+            if head_len:
+                second_stanza_1_c[0:head_len] = "." * head_len
+            if tail_len:
+                second_stanza_1_c[-tail_len:] = "." * tail_len
+            if intermediate_len:
+                intermediate_idx = random.sample(range(head_len, len(second_stanza_1_c) - tail_len), intermediate_len)
+                for iidx in intermediate_idx:
+                    second_stanza_1_c[iidx] = "."
+            second_stanza_1_c = "".join(second_stanza_1_c)
 
-        second_stanza_1_b = ["2" for tone in tones2_b]
-        num_dots = len(second_stanza_1_b) - length_b
-        head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
-        intermediate_len = 0  # np.random.randint(0, 3)
-        tail_len = num_dots - head_len - intermediate_len
-        if head_len:
-            second_stanza_1_b[0:head_len] = "." * head_len
-        if tail_len:
-            second_stanza_1_b[-tail_len:] = "." * tail_len
-        if intermediate_len:
-            intermediate_idx = random.sample(range(head_len, len(second_stanza_1_b) - tail_len), intermediate_len)
-            for iidx in intermediate_idx:
-                second_stanza_1_b[iidx] = "."
-        second_stanza_1_b = "".join(second_stanza_1_b)
+            second_stanza_1_b = ["2" for tone in tones2_b]
+            num_dots = len(second_stanza_1_b) - length_b
+            head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
+            intermediate_len = 0  # np.random.randint(0, 3)
+            tail_len = num_dots - head_len - intermediate_len
+            if head_len:
+                second_stanza_1_b[0:head_len] = "." * head_len
+            if tail_len:
+                second_stanza_1_b[-tail_len:] = "." * tail_len
+            if intermediate_len:
+                intermediate_idx = random.sample(range(head_len, len(second_stanza_1_b) - tail_len), intermediate_len)
+                for iidx in intermediate_idx:
+                    second_stanza_1_b[iidx] = "."
+            second_stanza_1_b = "".join(second_stanza_1_b)
 
-        second_stanza_2_c = ["3" for tone in tones2_c2]
-        num_dots = len(second_stanza_2_c) - length_c
-        head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
-        intermediate_len = 0  # np.random.randint(0, 3)
-        tail_len = num_dots - head_len - intermediate_len
-        if head_len:
-            second_stanza_2_c[0:head_len] = "." * head_len
-        if tail_len:
-            second_stanza_2_c[-tail_len:] = "." * tail_len
-        if intermediate_len:
-            intermediate_idx = random.sample(range(head_len, len(second_stanza_2_c) - tail_len), intermediate_len)
-            for iidx in intermediate_idx:
-                second_stanza_2_c[iidx] = "."
-        second_stanza_2_c = "".join(second_stanza_2_c)
+            second_stanza_2_c = ["3" for tone in tones2_c2]
+            num_dots = len(second_stanza_2_c) - length_c
+            head_len = np.random.randint(0, num_dots - 1) if num_dots > 1 else 0
+            intermediate_len = 0  # np.random.randint(0, 3)
+            tail_len = num_dots - head_len - intermediate_len
+            if head_len:
+                second_stanza_2_c[0:head_len] = "." * head_len
+            if tail_len:
+                second_stanza_2_c[-tail_len:] = "." * tail_len
+            if intermediate_len:
+                intermediate_idx = random.sample(range(head_len, len(second_stanza_2_c) - tail_len), intermediate_len)
+                for iidx in intermediate_idx:
+                    second_stanza_2_c[iidx] = "."
+            second_stanza_2_c = "".join(second_stanza_2_c)
 
-        second_stanza_2_d = "".join(["." for tone in tones2_d])
+            second_stanza_2_d = "".join(["." for tone in tones2_d])
 
-        first_indices_a = [idx for idx, r_str in enumerate(first_stanza[:len(first_stanza) // 2]) if r_str == "1"]
-        second_indices_a = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "1"]
-        first_indices_b = [idx for idx, r_str in enumerate(first_stanza[:len(first_stanza) // 2]) if r_str == "2"]
-        second_indices_b = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "2"]
-        first_indices_c = [idx for idx, r_str in enumerate(second_stanza_1_c) if r_str == "3"]
-        second_indices_c = [idx for idx, r_str in enumerate(second_stanza_2_c) if r_str == "3"]
-        first_indices_d = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "2"]
-        second_indices_d = [idx for idx, r_str in enumerate(second_stanza_1_b) if r_str == "2"]
-        if len(first_indices_a) != len(second_indices_a) or \
-                len(first_indices_b) != len(second_indices_b) or \
-                len(first_indices_c) != len(second_indices_c) or \
-                len(first_indices_d) != len(second_indices_d):  # make sure that the repetition structure is valid!
-            return ["." for idx, t in enumerate(input_cipai["tones"])]
-        description_string = EnglishTexts.repetitions_intrastrophal
-        return {"repetition": list(first_stanza + second_stanza_1_c + second_stanza_1_b + second_stanza_2_c + second_stanza_2_d), "description": description_string}
+            first_indices_a = [idx for idx, r_str in enumerate(first_stanza[:len(first_stanza) // 2]) if r_str == "1"]
+            second_indices_a = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "1"]
+            first_indices_b = [idx for idx, r_str in enumerate(first_stanza[:len(first_stanza) // 2]) if r_str == "2"]
+            second_indices_b = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "2"]
+            first_indices_c = [idx for idx, r_str in enumerate(second_stanza_1_c) if r_str == "3"]
+            second_indices_c = [idx for idx, r_str in enumerate(second_stanza_2_c) if r_str == "3"]
+            first_indices_d = [idx for idx, r_str in enumerate(first_stanza[len(first_stanza) // 2:]) if r_str == "2"]
+            second_indices_d = [idx for idx, r_str in enumerate(second_stanza_1_b) if r_str == "2"]
+            if len(first_indices_a) != len(second_indices_a) or \
+                    len(first_indices_b) != len(second_indices_b) or \
+                    len(first_indices_c) != len(second_indices_c) or \
+                    len(first_indices_d) != len(second_indices_d):  # make sure that the repetition structure is valid!
+                return ["." for idx, t in enumerate(input_cipai["tones"])]
+            description_string = EnglishTexts.repetitions_intrastrophal.format(tonal_agreement=tonal_agreement*100)
+            return {"repetition": list(first_stanza + second_stanza_1_c + second_stanza_1_b + second_stanza_2_c + second_stanza_2_d), "description": description_string}
+
     # Geximeiling case with parallel stanzas and high degree of tone compatibility
-    elif first_stanza_structure == second_stanza_structure and (
+    if first_stanza_structure == second_stanza_structure and (
             np.array(first_stanza_tones) == np.array(second_stanza_tones)).mean() > 0.9:
         cipai = ["r" for t in input_cipai["tones"]]
 

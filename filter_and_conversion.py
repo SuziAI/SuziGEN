@@ -45,7 +45,7 @@ def f_S_to_N(s, mgong): # A function can have multiple suzipu pitches
     return suzipu
 
 
-def f_N_to_S(n, mgong): # A function can have multiple suzipu pitches
+def f_N_to_S(n, mgong):
     for function in dataclasses.astuple(GongdiaoStep()):
         if n in f_S_to_N(function, mgong):
             return function
