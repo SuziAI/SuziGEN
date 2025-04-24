@@ -259,6 +259,28 @@ def remove_single_repetition(first_stanza, second_stanza):
     return first_stanza, second_stanza
 
 
+def remove_repetition_for_secondary(input_cipai, repetition_string):
+    if "1" in repetition_string:
+        return ["." for r in repetition_string]
+
+    first_stanza_structure = get_sentence_lengths(input_cipai)[0]
+
+    first_stanza = repetition_string[:sum(first_stanza_structure)]
+    second_stanza = repetition_string[sum(first_stanza_structure):]
+
+    first_stanza_idxs = [idx for idx, r in enumerate(first_stanza) if r == "r"]
+    second_stanza_idxs = [idx for idx, r in enumerate(second_stanza) if r == "r"]
+
+    remove_idxs = [idx for idx in range(len(first_stanza)) if np.random.rand() < 0.2] # remove 20% of indices on average
+
+    first_stanza_idxs = [idx for number, idx in enumerate(first_stanza_idxs) if number not in remove_idxs]
+    second_stanza_idxs = [idx for number, idx in enumerate(second_stanza_idxs) if number not in remove_idxs]
+
+    first_stanza = ["r" if idx in first_stanza_idxs else "." for idx in range(len(first_stanza))]
+    second_stanza = ["r" if idx in second_stanza_idxs else "." for idx in range(len(second_stanza))]
+    repetition_string = remove_single_repetition(first_stanza, second_stanza)
+    return list(repetition_string[0] + repetition_string[1])
+
 # randomly select some repetition components that are removed
 def remove_some_components(first_stanza, second_stanza):
     first_indices = [idx for idx, r_str in enumerate(first_stanza) if r_str == "r"]
@@ -499,7 +521,7 @@ def generate_repetition(input_cipai):
 
         description_string = EnglishTexts.repetitions_not_so_similar_strophes.format(tonal_agreement=tonal_agreement * 100)
         return {"repetition": list(cipai_str), "description": description_string}
-    else:
+    else: # non-parallel stanzas case
         def recursive_repetitions(first_cipai, second_cipai, return_raw_indices=False):
             lfc = len(first_cipai)
             lsc = len(second_cipai)

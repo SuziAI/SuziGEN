@@ -52,6 +52,17 @@ class EnglishTexts:
         "I chose {cadential_phrase} for you. This happens with a probability of {probability:.1f}%."
     )
 
+    second_stanza_secondary_final: str = (
+        "Since we have successfully generated the pitches, it's time to turn our attention to the secondary symbols. "
+        "There are two classes of pieces in Baishidaoren Gequ, the ones that end in XIAO_ZHU (5/17) and those that end in DA_DUN (12/17). "
+        "I chose {final_secondary}, which accordingly has a probability of {probability:.1f}%."
+    )
+
+    second_stanza_secondary_initial_state: str = (
+        "Again, I will first generate the last three notes of the second stanza. "
+        "This time, I chose {cadential_phrase}, which has a probability of {probability:.1f}%."
+    )
+
     second_stanza_pitch_normal_case: str = (
         "For this type of piece, the second stanza has the most freedom, since the repetition pattern does not yet affect "
         "the generated pitches. The probability for the pitches I chose for you in the second stanza is {probability:,.5g}."
@@ -83,6 +94,16 @@ class EnglishTexts:
     first_stanza_pitch_initial_state_without_repetition: str = (
         "For the first stanza's cadential phrase, "
         "I generated {cadential_phrase}, which for the given repetition pattern has a probability of {probability:.1f}%."
+    )
+
+    first_stanza_secondary_initial_state_with_repetition: str = (
+        "There is no repetition pattern inside the first stanza's cadential phrase, "
+        "therefore I generated {cadential_phrase} with a probability of {probability:.1f}%."
+    )
+
+    first_stanza_secondary_initial_state_without_repetition: str = (
+        "For the first stanza's cadential phrase, "
+        "I generated {cadential_phrase}. For the given repetition pattern has a probability of {probability:.1f}%."
     )
 
     first_stanza_pitch_normal_case: str = (

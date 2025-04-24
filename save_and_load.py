@@ -6,8 +6,7 @@ import pickle
 
 from music import get_tone_inventory, tone_inventory_convert_pitch, GongcheMelodySymbol, \
     relative_pitch_to_absolute_pitch, absolute_pitch_to_interval
-from pitch_and_secondary import get_contour_distributions, get_initial_state_distributions, get_function_distributions, \
-    get_pitch_transition_probabilities
+from pitch_and_secondary import *
 
 
 def build_17_pieces_data():
@@ -143,7 +142,7 @@ def build_17_pieces_data():
                 piece["music"] = {}
                 piece["music"]["suzipu"] = get_suzipu_list(piece["content"])
                 piece["music"]["relative_pitch"] = [note["pitch"] for note in piece["music"]["suzipu"]]
-                piece["music"]["secondary"] = [note["secondary"] for note in piece["music"]["suzipu"]]
+                piece["music"]["secondary"] = [str(note["secondary"]) for note in piece["music"]["suzipu"]]
                 piece["music"]["absolute_pitch"] = relative_pitch_to_absolute_pitch(piece["mode_properties"],
                                                                                     piece["music"]["relative_pitch"])
                 piece["music"]["function"] = absolute_pitch_to_function(piece["mode_properties"],
@@ -152,9 +151,9 @@ def build_17_pieces_data():
                                                                         piece["music"]["absolute_pitch"])
 
                 piece["music"]["retrograde_suzipu"] = piece["music"]["suzipu"][::-1]
-                piece["music"]["retrograde_relative_pitch"] = piece["music"]["relative_pitch"]
-                piece["music"]["retrograde_secondary"] = piece["music"]["secondary"]
-                piece["music"]["retrograde_absolute_pitch"] = piece["music"]["absolute_pitch"]
+                piece["music"]["retrograde_relative_pitch"] = piece["music"]["relative_pitch"][::-1]
+                piece["music"]["retrograde_secondary"] = piece["music"]["secondary"][::-1]
+                piece["music"]["retrograde_absolute_pitch"] = piece["music"]["absolute_pitch"][::-1]
                 piece["music"]["retrograde_function"] = piece["music"]["function"][::-1]
                 piece["music"]["retrograde_interval"] = -piece["music"]["interval"][::-1]
 
@@ -180,8 +179,8 @@ def build_17_pieces_data():
             piece["repetitions"] = all_repetitions[len(pieces)]
             piece["retrograde_repetitions"] = piece["repetitions"][::-1]
             pieces.append(piece)
-            print(piece["title"], len(piece["music"]["relative_pitch"]), len(piece["cipai"]["tones"]),
-                  len(piece["repetitions"]))
+            #print(piece["title"], len(piece["music"]["relative_pitch"]), len(piece["cipai"]["tones"]),
+            #      len(piece["repetitions"]))
 
     with open("17_pieces_data.pkl", "wb") as file_handle:
         pickle.dump(pieces, file_handle)
@@ -199,16 +198,27 @@ def load_17_pieces_data():
 def load_probabilities():
     pieces = load_17_pieces_data()
     if not os.path.exists("probabilities.pkl"):
-        contour_distributions = get_contour_distributions(pieces)
-        initial_state_distributions = get_initial_state_distributions(pieces)
-        function_distributions = get_function_distributions(pieces)
+        pitch_contour_distributions = get_pitch_contour_distributions(pieces)
+        pitch_initial_state_distributions = get_pitch_initial_state_distributions(pieces)
+        pitch_function_distributions = get_pitch_function_distributions(pieces)
         pitch_transition_probabilities = get_pitch_transition_probabilities(pieces)
+
+        secondary_group_distributions = get_secondary_group_distributions(pieces)
+        secondary_zhe_ye_distributions = get_secondary_zhe_ye_distributions(pieces)
+        secondary_initial_state_distributions = get_secondary_initial_state_distributions(pieces)
+        secondary_transition_probabilities = get_secondary_transition_probabilities(pieces)
+
         with open("probabilities.pkl", "wb") as file_handle:
             pickle.dump({
-                "contour_distributions": contour_distributions,
-                "initial_state_distributions": initial_state_distributions,
-                "function_distributions": function_distributions,
-                "pitch_transition_probabilities": pitch_transition_probabilities
+                "pitch_contour_distributions": pitch_contour_distributions,
+                "pitch_initial_state_distributions": pitch_initial_state_distributions,
+                "pitch_function_distributions": pitch_function_distributions,
+                "pitch_transition_probabilities": pitch_transition_probabilities,
+
+                "secondary_initial_state_distributions": secondary_initial_state_distributions,
+                "secondary_group_distributions": secondary_group_distributions,
+                "secondary_zhe_ye_distributions": secondary_zhe_ye_distributions,
+                "secondary_transition_probabilities": secondary_transition_probabilities
             }, file_handle)
 
     with open("probabilities.pkl", "rb") as file_handle:

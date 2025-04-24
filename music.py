@@ -2,9 +2,15 @@ import dataclasses
 
 import numpy as np
 
+@dataclasses.dataclass
+class SuzipuSecondaryFunction:
+    NONE: str = "None"
+    DADUN_DAZHU: str = "DadunDazhu"
+    XIAOZHU_DINGZHU: str = "XiaozhuDingzhu"
+    ZHE_YE: str = "ZheYe"
 
 @dataclasses.dataclass
-class SuzipuAdditionalSymbol:
+class SuzipuSecondarySymbol:
     ADD_NONE: None = None
     ADD_DA_DUN: str = "DA_DUN"
     ADD_XIAO_ZHU: str = "XIAO_ZHU"
@@ -12,6 +18,20 @@ class SuzipuAdditionalSymbol:
     ADD_DA_ZHU: str = "DA_ZHU"
     ADD_ZHE: str = "ZHE"
     ADD_YE: str = "YE"
+
+    @classmethod
+    def to_function(cls, symbol):
+        if symbol == "None":
+            return SuzipuSecondaryFunction.NONE
+        elif symbol in (SuzipuSecondarySymbol.ADD_DA_DUN, SuzipuSecondarySymbol.ADD_DA_ZHU):
+            return SuzipuSecondaryFunction.DADUN_DAZHU
+        elif symbol in (SuzipuSecondarySymbol.ADD_XIAO_ZHU, SuzipuSecondarySymbol.ADD_DING_ZHU):
+            return SuzipuSecondaryFunction.XIAOZHU_DINGZHU
+        elif symbol in (SuzipuSecondarySymbol.ADD_ZHE, SuzipuSecondarySymbol.ADD_YE):
+            return SuzipuSecondaryFunction.ZHE_YE
+        else:
+            print(f"'{symbol}' is not a valid suzipu secondary symbol string identifier.")
+            return "INVALID"
 
 @dataclasses.dataclass
 class GongcheMelodySymbol:
@@ -76,6 +96,30 @@ class GongcheMelodySymbol:
                 GongcheMelodySymbol.XIA_WU: "清大",
                 GongcheMelodySymbol.WU: "清太",
                 GongcheMelodySymbol.GAO_WU: "清夾",
+            }[symbol]
+        except KeyError:
+            return "INVALID"
+
+    @classmethod
+    def to_pitch_name(cls, symbol):
+        try:
+            return {
+                GongcheMelodySymbol.HE: "E4",
+                GongcheMelodySymbol.XIA_SI: "F4",
+                GongcheMelodySymbol.SI: "F#4",
+                GongcheMelodySymbol.XIA_YI: "G4",
+                GongcheMelodySymbol.YI: "G#4",
+                GongcheMelodySymbol.SHANG: "A4",
+                GongcheMelodySymbol.GOU: "A#4",
+                GongcheMelodySymbol.CHE: "B4",
+                GongcheMelodySymbol.XIA_GONG: "C5",
+                GongcheMelodySymbol.GONG: "C#5",
+                GongcheMelodySymbol.XIA_FAN: "D5",
+                GongcheMelodySymbol.FAN: "D#5",
+                GongcheMelodySymbol.LIU: "E5",
+                GongcheMelodySymbol.XIA_WU: "F5",
+                GongcheMelodySymbol.WU: "F#5",
+                GongcheMelodySymbol.GAO_WU: "G5",
             }[symbol]
         except KeyError:
             return "INVALID"
@@ -566,7 +610,7 @@ def strict_tone_inventory_convert_pitch(gong_lvlv, pitch: GongcheMelodySymbol):
 
     return None
 
-SimpleSuzipuList = [
+SimplePitchList = [
     GongcheMelodySymbol.HE,
     GongcheMelodySymbol.SI,
     GongcheMelodySymbol.YI,
@@ -581,13 +625,29 @@ SimpleSuzipuList = [
 ]
 
 SimpleSecondaryList = [
-    None,
-    SuzipuAdditionalSymbol.ADD_DA_DUN,
-    SuzipuAdditionalSymbol.ADD_XIAO_ZHU,
-    SuzipuAdditionalSymbol.ADD_DING_ZHU,
-    SuzipuAdditionalSymbol.ADD_DA_ZHU,
-    SuzipuAdditionalSymbol.ADD_ZHE,
-    SuzipuAdditionalSymbol.ADD_YE
+    "None",
+    SuzipuSecondarySymbol.ADD_DA_DUN,
+    SuzipuSecondarySymbol.ADD_XIAO_ZHU,
+    SuzipuSecondarySymbol.ADD_DING_ZHU,
+    SuzipuSecondarySymbol.ADD_DA_ZHU,
+    SuzipuSecondarySymbol.ADD_ZHE,
+    SuzipuSecondarySymbol.ADD_YE
+]
+
+ReducedSecondaryList = [
+    "None",
+    SuzipuSecondarySymbol.ADD_DA_DUN,
+    SuzipuSecondarySymbol.ADD_XIAO_ZHU,
+    SuzipuSecondarySymbol.ADD_DING_ZHU,
+    SuzipuSecondarySymbol.ADD_DA_ZHU,
+    "ZheYe"
+]
+
+SecondaryFunctionList = [
+    "None",
+    "DadunDazhu",
+    "XiaozhuDingzhu",
+    "ZheYe"
 ]
 
 def absolute_pitch_to_interval(mode_properties, absolute_pitch_list):
