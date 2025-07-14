@@ -5,7 +5,7 @@ import os
 import pickle
 
 from music import get_tone_inventory, tone_inventory_convert_pitch, GongcheMelodySymbol, \
-    relative_pitch_to_absolute_pitch, absolute_pitch_to_interval
+    relative_pitch_to_absolute_pitch, absolute_pitch_to_interval, absolute_pitch_to_function
 from pitch_and_secondary import *
 
 
@@ -112,13 +112,6 @@ def build_17_pieces_data():
         for pitch in pitch_list:
             index_list.append(pitch_to_index[pitch])
         return index_list
-
-    def absolute_pitch_to_function(mode_properties, absolute_pitch_list):
-        tone_inventory = get_tone_inventory(mode_properties["gong_lvlv"])
-        function_list = []
-        for pitch in absolute_pitch_list:
-            function_list.append(tone_inventory[GongcheMelodySymbol.to_index(pitch)])
-        return function_list
 
     FULL_PAUSE = [".", "。", "?", "？", ":", "："]
     PAUSE = [",", "，", "、"]

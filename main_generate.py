@@ -1,6 +1,7 @@
 import text_resources
 from midi import realize_midi
 from mode import generate_mode
+from music import absolute_pitch_to_function, get_absolute_tone_inventory, relative_pitch_to_absolute_pitch
 from pitch_and_secondary import generate_pitch, generate_secondary
 from repetitions import generate_repetition, remove_repetition_for_secondary
 from save_and_load import load_17_pieces_data, load_probabilities
@@ -29,19 +30,19 @@ def generate(cipai, pieces):
     description_string += pitch_repetition["description"] + "\n\n"
     #total_probability *= repetition["probability"] ## maybe TODO?
 
-    secondary_repetition = remove_repetition_for_secondary(cipai, pitch_repetition["repetition"])
-
     # DEBUG TODO
-    #repetition["repetition"] = ['r', 'r', 'r', '.', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r']
-    #repetition["repetition"] = ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.']
+    #pitch_repetition["repetition"] = ['r', 'r', 'r', '.', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', '.', '.', '.', '.', 'r', 'r', 'r', 'r', 'r', 'r']
+    #pitch_repetition["repetition"] = ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.']
 
     # DEBUG TODO
     #pitch_repetition["repetition"] = ['.']*len(cipai["meter"])
+
+    secondary_repetition = {"repetition": remove_repetition_for_secondary(cipai, pitch_repetition["repetition"])}
 
     mode = generate_mode(pieces)
     description_string += mode["description"] + "\n\n"
@@ -59,6 +60,9 @@ def generate(cipai, pieces):
     description_string += pitch["description"] + "\n\n"
     total_probability *= pitch["probability"]
 
+    absolute_pitch = relative_pitch_to_absolute_pitch({"gong_lvlv": mode["mgong"]}, pitch["pitch_list"])
+    pitch_functions = absolute_pitch_to_function({"gong_lvlv": mode["mgong"]}, absolute_pitch)
+
     secondary = generate_secondary(
         initial_state_distributions=secondary_initial_state_distributions,
         zhe_ye_distributions = secondary_zhe_ye_distributions,
@@ -66,7 +70,7 @@ def generate(cipai, pieces):
         secondary_transition_probabilities=secondary_transition_probabilities,
         cipai=cipai,
         repetition=secondary_repetition,
-        pitch=pitch
+        pitch_functions=pitch_functions
     )
     description_string += secondary["description"] + "\n\n"
     total_probability *= secondary["probability"]
@@ -78,8 +82,16 @@ def generate(cipai, pieces):
 
     print(description_string)
 
+    print(pitch_repetition["repetition"])
+    print(secondary_repetition["repetition"])
+
+    with open("output.txt", "w") as file:
+        file.write(description_string)
+
     realize_midi({"gong_lvlv": mode["mgong"], "final_pitch": mode["mfinal"]}, pitch["pitch_list"], secondary["secondary_list"], cipai["meter"], "output")
 
+    #for m, s in zip(cipai["meter"], secondary["secondary_list"]):
+    #    print(m, s)
 
 if __name__ == "__main__":
     pieces = load_17_pieces_data()

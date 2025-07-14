@@ -78,6 +78,9 @@ class Distribution:
         new_distribution = Distribution(first_space, np.sum([coefficient * np.array(list(distribution.probabilities())) for coefficient, distribution in zip(coefficient_list, distribution_list)], axis=0))
         return new_distribution
 
+    def to_dict(self):
+        return self.distribution
+
     def sample_space(self):
         return self.distribution.keys()
 
@@ -101,7 +104,7 @@ class Distribution:
             raise ValueError("Can only restrict the sample space to a subspace of the sample space.")
         return Distribution.from_dict({key: value for key, value in zip(self.distribution.keys(), self.distribution.values()) if key in new_sample_space})
 
-    # RV X on A (distribution P), RV Y on B (distribution B), f: A -> B. Calculate P[X = x | f(x) =^d Y]
+    # RV X on A (distribution P), RV Y on B (distribution B), f: A -> B. Calculate P[X = x | f(X) = Y]
     def get_conditioned_on_Q(self, dist_q, f):
         # Group X by f(x)
         groups = {}
@@ -119,6 +122,7 @@ class Distribution:
         # Restrict dist_q to reachable Y
         total_reachable = sum([dist_q[y] for y in reachable_y])
         if total_reachable < 1e-10:
+            print(self, dist_q, [f(key) for key in self.sample_space()])
             raise ValueError("The distribution cannot be constructed. None of the y is reachable.")
 
         dist_q_restricted = {y: dist_q[y] / total_reachable for y in reachable_y}

@@ -7,14 +7,11 @@ def realize_midi(mode, relative_pitch, secondary, meter, filename):
     absolute_pitch = relative_pitch_to_absolute_pitch(mode, relative_pitch)
     pitch_number = [pretty_midi.note_name_to_number(GongcheMelodySymbol.to_pitch_name(p)) for p in absolute_pitch]
 
-    print(pitch_number)
-    print(secondary)
-
     xiao_sequence = []
     paiban_sequence = []
     for idx, (pitch, sec, met) in enumerate(zip(pitch_number, secondary, meter)):
         pause = 0.0
-        if met == "ju" or met == "dou":
+        if met == "ju" or met == "pian":
             pause = 0.5
         elif met == "dou":
             pause = 0.25
@@ -32,11 +29,13 @@ def realize_midi(mode, relative_pitch, secondary, meter, filename):
             paiban_sequence.append((75, 1.0))
         elif sec == SuzipuSecondarySymbol.ADD_ZHE:
             xiao_sequence.append((pitch, 1.0))
-            xiao_sequence.append((pitch+1, 1.0))
+            xiao_sequence.append((pitch+1, 1.0-pause))
+            xiao_sequence.append(("REST", pause))
             paiban_sequence.append(("REST", 2.0))
         elif sec == SuzipuSecondarySymbol.ADD_YE:
             xiao_sequence.append((pitch, 1.0))
-            xiao_sequence.append((pitch+2, 1.0))
+            xiao_sequence.append((pitch+2, 1.0-pause))
+            xiao_sequence.append(("REST", pause))
             paiban_sequence.append(("REST", 2.0))
         elif sec == SuzipuSecondarySymbol.ADD_DA_ZHU:
             xiao_sequence.append((pitch, 2.5))
@@ -87,8 +86,8 @@ def realize_midi(mode, relative_pitch, secondary, meter, filename):
             current_time += duration
 
 
-    # Recorder (Melody) — Program 74 (Flute, Recorder not directly available)
-    xiao = make_instrument(program=74, name="Xiao")
+    # Recorder (Melody) — Program 75 (Recorder)
+    xiao = make_instrument(program=75, name="Xiao")
     # Harp (Arpeggios) — Program 46
     guzheng = make_instrument(program=46, name="Guzheng")
     # Claves (Percussion) — use MIDI percussion note 75 on channel 9 (drum channel)

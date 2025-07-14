@@ -68,8 +68,19 @@ class EnglishTexts:
         "the generated pitches. The probability for the pitches I chose for you in the second stanza is {probability:,.5g}."
     )
 
+    second_stanza_secondary_normal_case: str = (
+        "Again, the second stanza has the most freedom, since the repetition pattern does not yet affect "
+        "the generated pitches. The pitches I chose for you in the second stanza have the probability {probability:,.5g}."
+    )
+
     second_stanza_pitch_intrastrophal_case_cd: str = (
         "For this type of piece, the last half of the second stanza (with the form CD) has the most freedom, "
+        "since the repetition pattern does not yet affect the generated pitches. "
+        "The probability for the pitches I chose for you here is {probability:,.5g}."
+    )
+
+    second_stanza_secondary_intrastrophal_case_cd: str = (
+        "Again, in the intrastophal case, the CD part has the most freedom, "
         "since the repetition pattern does not yet affect the generated pitches. "
         "The probability for the pitches I chose for you here is {probability:,.5g}."
     )
@@ -81,9 +92,21 @@ class EnglishTexts:
         "The other pitches I chose for you in B have the probability {pitch_probability:,.5g}."
     )
 
+    second_stanza_secondary_intrastrophal_case_cb: str = (
+        "We already have determined the C part, "
+        "so similar to the pitch generation step, we "
+        "sample a secondary cadential phrase {cadential_phrase} with a probability of {cadential_probability:.1f}%. "
+        "The other symbols in B I have chosen for you has the total probability {pitch_probability:,.5g}."
+    )
+
     second_stanza_pitch_intrastrophal_case_ab: str = (
         "The first stanza has the form ABAB, where we have already determined B in the previous step. "
         "The pitches I generated for A have a probability of {probability:,.5g}."
+    )
+
+    second_stanza_secondary_intrastrophal_case_ab: str = (
+        "Because of the ABAB form in the first stanza, and we have already generated the B part, "
+        "I generated you a suitable A part with probability {probability:,.5g}."
     )
 
     first_stanza_pitch_initial_state_with_repetition: str = (
@@ -91,19 +114,19 @@ class EnglishTexts:
         "I generated {cadential_phrase}, which has a probability of {probability:.1f}%."
     )
 
+    first_stanza_secondary_initial_state_with_repetition: str = (
+        "Because there is no repetition pattern inside the first stanza's cadential phrase, "
+        "I generated the secondary pattern {cadential_phrase} with a probability of {probability:.1f}%."
+    )
+
     first_stanza_pitch_initial_state_without_repetition: str = (
         "For the first stanza's cadential phrase, "
         "I generated {cadential_phrase}, which for the given repetition pattern has a probability of {probability:.1f}%."
     )
 
-    first_stanza_secondary_initial_state_with_repetition: str = (
-        "There is no repetition pattern inside the first stanza's cadential phrase, "
-        "therefore I generated {cadential_phrase} with a probability of {probability:.1f}%."
-    )
-
     first_stanza_secondary_initial_state_without_repetition: str = (
         "For the first stanza's cadential phrase, "
-        "I generated {cadential_phrase}. For the given repetition pattern has a probability of {probability:.1f}%."
+        "I generated {cadential_phrase}. For the given repetition pattern it has a probability of {probability:.1f}%."
     )
 
     first_stanza_pitch_normal_case: str = (
@@ -111,9 +134,20 @@ class EnglishTexts:
         "I chose some pitches that have a probability of {probability:,.3g}."
     )
 
+    first_stanza_secondary_normal_case: str = (
+        "As determined by the repetition pattern, the first stanza has restricted possibilities for the secondary symbols filling the gaps. "
+        "Therefore, I chose some secondary symbols that have a combined probability of {probability:,.3g}."
+    )
+
     both_stanzas_pitch_no_repetition_case: str = (
-        "Because there is no specific repetition pattern inside this piece, I simply generate all missing pitches for you"
+        "Because there is no specific repetition pattern inside this piece, I simply generated all missing pitches for you"
         ", which has a probability of {probability:,.5g}"
+        "."
+    )
+
+    both_stanzas_secondary_no_repetition_case: str = (
+        "There is no specific repetition pattern inside this piece, so I simply generated all missing secondary symbols"
+        "with a probability of {probability:,.5g}"
         "."
     )
 

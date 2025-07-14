@@ -9,7 +9,7 @@ from distribution import *
 from filter_and_conversion import filter_by_final, relative_pitch_to_contour, f_S_to_N, add_mgong, get_suzipu_pitches, \
     f_N_to_S, relative_pitch_to_interval, filter_by_final_secondary
 from music import GongdiaoStep, Lvlv, SimplePitchList, SuzipuSecondarySymbol, \
-    SecondaryFunctionList, ReducedSecondaryList
+    SecondaryFunctionList, ReducedSecondaryList, SimpleSecondaryList
 from text_resources import EnglishTexts
 
 
@@ -210,8 +210,14 @@ def get_secondary_zhe_ye_distributions(pieces):
         else:
             return "any"
 
+    space = ["ZHE", "YE", "any"]
+
     def get_scale_degreee_distributions(pieces, retrograde=True):
         secondary_dict = {}
+
+        for sd_1, sd_2 in zip(dataclasses.astuple(GongdiaoStep()), dataclasses.astuple(GongdiaoStep())):
+            secondary_dict[tuple([sd_1, sd_2])] = Distribution.from_dict({"ZHE": 0, "YE": 0, "any": 1})  # pre-initialize tuples
+
         for piece in pieces:
             scale_degree_tuples = get_k_grams(piece["music"]["retrograde_function"], 2)
             secondary_list = [mapping(symbol) for symbol in piece["music"]["retrograde_secondary"][::-1]]
@@ -220,7 +226,7 @@ def get_secondary_zhe_ye_distributions(pieces):
                     secondary_dict[scales] = [secondary_group]
                 else:
                     secondary_dict[scales].append(secondary_group)
-                secondary_dict[scales] = Distribution.from_sample(secondary_dict[scales])
+                secondary_dict[scales] = Distribution.from_sample(secondary_dict[scales]).extend_space(space)
         return secondary_dict
 
     contour_distributions = {
@@ -326,17 +332,7 @@ def get_secondary_initial_state_distributions(pieces):
 
 
 def get_pitch_initial_state(initial_state_distributions, contour_distributions, cipai, mode, start_idx=0):
-    mgong_0, mfinal_0 = mode["mgong"], mode["mfinal"]
-
-    retrograde_cipai = cipai["tones"][::-1]
-
-    try:
-        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0].get_conditioned_on_Q(
-            contour_distributions["all"][tuple(retrograde_cipai[start_idx:start_idx+3])],
-            pitch_triple_to_contour(mgong_0)
-        )
-    except ZeroDivisionError:
-        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0]
+    tone_dependent_distribution = get_pitch_initial_state_probabilities(initial_state_distributions, contour_distributions, cipai, mode, start_idx)
 
     initial_state = tone_dependent_distribution.sample()
 
@@ -357,37 +353,124 @@ def get_pitch_initial_state(initial_state_distributions, contour_distributions, 
             "probability": tone_dependent_distribution[initial_state]}
 
 
-def get_pitch_initial_state_probabilities(initial_state_distributions, contour_distributions, cipai, mode):
+def get_pitch_initial_state_probabilities(initial_state_distributions, contour_distributions, cipai, mode, start_idx=0):
     mgong_0, mfinal_0 = mode["mgong"], mode["mfinal"]
 
     retrograde_cipai = cipai["tones"][::-1]
 
-    tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0].get_conditioned_on_Q(contour_distributions["all"][tuple(retrograde_cipai[0:3])],
-                                                                                                      pitch_triple_to_contour(mgong_0))
+    try:
+        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0].get_conditioned_on_Q(
+            contour_distributions["all"][tuple(retrograde_cipai[start_idx:start_idx + 3])],
+            pitch_triple_to_contour(mgong_0)
+        )
+    except ZeroDivisionError:
+        tone_dependent_distribution = initial_state_distributions[mgong_0][mfinal_0]
+
     return tone_dependent_distribution
 
 
-def get_secondary_initial_state(initial_state_distributions, final_secondary, start_idx=0):
-    initial_state = initial_state_distributions[final_secondary].sample()
+def get_secondary_initial_state(initial_state_distributions, final_secondary, retrograde_pitch_functions, zhe_ye_distributions, start_idx=0):
+    distr = get_secondary_initial_state_probabilities(initial_state_distributions, final_secondary, retrograde_pitch_functions, zhe_ye_distributions, start_idx)
+
+    initial_state = distr.sample()
 
     return_string = EnglishTexts.second_stanza_secondary_initial_state.format(
         cadential_phrase=[str(secondary) for secondary in initial_state][::-1],
-        probability=initial_state_distributions[initial_state[0]][initial_state] * 100
+        probability=distr[initial_state] * 100
     )
 
     return_string_first_stanza = EnglishTexts.first_stanza_secondary_initial_state_with_repetition.format(
         cadential_phrase=[str(secondary) for secondary in initial_state][::-1],
-        probability=initial_state_distributions[initial_state[0]][initial_state] * 100
+        probability=distr[initial_state] * 100
     )
 
     return {"initial_state": [str(entry) for entry in initial_state],
             "description": return_string,
             "description_first": return_string_first_stanza,
-            "probability": initial_state_distributions[initial_state[0]][initial_state]}
+            "probability": distr[initial_state]}
 
 
-def get_secondary_initial_state_probabilities(initial_state_distributions, final_secondary):
-    return initial_state_distributions[final_secondary]
+def reweight_zhe_ye(distr, zhe_ye_distributions):
+    distr_dict = distr.to_dict()
+    copy_distr = copy.deepcopy(distr_dict)
+
+    for secondary in copy_distr.keys():
+        if secondary == "ZheYe":
+            zheye_probability = distr_dict[secondary]
+
+            distr_dict[SuzipuSecondarySymbol.ADD_ZHE] = zheye_probability * zhe_ye_distributions[SuzipuSecondarySymbol.ADD_ZHE]
+            distr_dict[SuzipuSecondarySymbol.ADD_YE] = zheye_probability * zhe_ye_distributions[SuzipuSecondarySymbol.ADD_YE]
+
+            del distr_dict[secondary]
+
+    return Distribution.from_dict(distr_dict)
+
+
+def extend_to_zhe_ye(input_dict):
+
+    for coord in range(len(list(input_dict.keys())[0])):
+        copy_dict = copy.deepcopy(input_dict)
+        for triple in copy_dict.keys():
+            if triple[coord] == "ZheYe":
+                distribution = input_dict[triple]
+
+                zhe_triple = list(triple)
+                zhe_triple[coord] = SuzipuSecondarySymbol.ADD_ZHE
+                zhe_triple = tuple(zhe_triple)
+
+                ye_triple = list(triple)
+                ye_triple[coord] = SuzipuSecondarySymbol.ADD_YE
+                ye_triple = tuple(ye_triple)
+
+                input_dict[zhe_triple] = distribution
+                input_dict[ye_triple] = distribution
+
+                del input_dict[triple]
+    return input_dict
+
+
+def get_secondary_initial_state_probabilities(initial_state_distributions, final_secondary, retrograde_pitch_functions, zhe_ye_distributions, start_idx=0):
+    def secondary_mapping(symbol):
+        if symbol == "ZHE":
+            return "ZHE"
+        elif symbol == "YE":
+            return "YE"
+        else:
+            return "any"
+
+    def reweight_zhe_ye(distr, zhe_ye_distributions, coordinate):
+        distr_dict = distr.to_dict()
+
+        copy_distr = copy.deepcopy(distr_dict)
+
+        for triple in copy_distr.keys():
+            if triple[coordinate] == "ZheYe":
+                probability = distr_dict[triple]
+
+                zhe_triple = list(triple)
+                zhe_triple[coordinate] = SuzipuSecondarySymbol.ADD_ZHE
+                zhe_triple = tuple(zhe_triple)
+                zhe_probability = probability * zhe_ye_distributions[SuzipuSecondarySymbol.ADD_ZHE]
+
+                ye_triple = list(triple)
+                ye_triple[coordinate] = SuzipuSecondarySymbol.ADD_YE
+                ye_triple = tuple(ye_triple)
+                ye_probability = probability * zhe_ye_distributions[SuzipuSecondarySymbol.ADD_YE]
+
+                distr_dict[zhe_triple] = zhe_probability
+                distr_dict[ye_triple] = ye_probability
+                del distr_dict[triple]
+
+        return Distribution.from_dict(distr_dict)
+
+    functions_1 = tuple(retrograde_pitch_functions[0:2])
+    functions_2 = tuple(retrograde_pitch_functions[1:3])
+
+    distr = initial_state_distributions[final_secondary]
+    distr = reweight_zhe_ye(distr, zhe_ye_distributions["base"][functions_1], 1)
+    distr = reweight_zhe_ye(distr, zhe_ye_distributions["base"][functions_2], 2)
+
+    return distr
 
 
 def get_interval_n_grams(gong_lvlv, base_list, n):
@@ -730,37 +813,55 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
 
         for triple in itertools.product(*[allowed_suzipu_list for idx in range(3)]):
             if idx in (len(generated_piece) - 1, pian_idx - 1):  # First note of stanza
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["beginning"],
-                    get_function_from_pitch
-                )
+                try:
+                    next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                    distr = next_pitch_distribution.get_conditioned_on_Q(
+                        function_distributions[mfinal]["beginning"],
+                        get_function_from_pitch
+                    )
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
             elif cipai["meter"][::-1][idx] == "ju": # Generate a ju
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["ju"],
-                    get_function_from_pitch
-                )
+                try:
+                    next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                    distr = next_pitch_distribution.get_conditioned_on_Q(
+                        function_distributions[mfinal]["ju"],
+                        get_function_from_pitch
+                    )
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
             elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "ju": # Generate one after a ju
-                next_pitch_distribution = pitch_transition_probabilities["base"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_ju"],
-                    get_function_from_pitch
-                )
+                try:
+                    next_pitch_distribution = pitch_transition_probabilities["base"][mfinal][mgong][triple]
+                    distr = next_pitch_distribution.get_conditioned_on_Q(
+                        function_distributions[mfinal]["after_ju"],
+                        get_function_from_pitch
+                    )
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
             elif cipai["meter"][::-1][idx] == "dou": # Generate dou
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["dou"],
-                    get_function_from_pitch
-                )
+                try:
+                    next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                    distr = next_pitch_distribution.get_conditioned_on_Q(
+                        function_distributions[mfinal]["dou"],
+                        get_function_from_pitch
+                    )
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
             elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "dou": # Generate one after dou
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_dou"],
-                    get_function_from_pitch
-                )
+                try:
+                    next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                    distr = next_pitch_distribution.get_conditioned_on_Q(
+                        function_distributions[mfinal]["after_dou"],
+                        get_function_from_pitch
+                    )
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
             else:
-                distr = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                try:
+                    distr = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                except ZeroDivisionError:
+                    distr = next_pitch_distribution
 
             last_contour = int(np.sign(
                 relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [triple[1], triple[2]])[0]))
@@ -853,8 +954,8 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
                         one_after[key].distribution[
                             final_key] = 0.  # this is no probability matrix, so if we calculate it later and the result is zero we can discard the result
 
-            final_distribution = transition_matrix_to_sparse(one_after) * transition_matrix_to_sparse(
-                two_after) * transition_matrix_to_sparse(three_after)
+            final_distribution = transition_matrix_to_sparse(one_after) @ transition_matrix_to_sparse(
+                two_after) @ transition_matrix_to_sparse(three_after)
         # case 2: we condition on two final values
         elif final_index < len(generated_piece) - 2 and None not in generated_piece[final_index + 1:final_index + 3]:
             final_condition = generated_piece[final_index + 2]
@@ -886,7 +987,7 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
                         one_after[key].distribution[
                             final_key] = 0.  # this is no probability matrix, so if we calculate it later and the result is zero we can discard the result
 
-            final_distribution = transition_matrix_to_sparse(one_after) * transition_matrix_to_sparse(two_after)
+            final_distribution = transition_matrix_to_sparse(one_after) @ transition_matrix_to_sparse(two_after)
 
         # case 3: we only condition on one final value
         elif final_index < len(generated_piece) - 1 and None not in generated_piece[final_index + 1:final_index + 2]:
@@ -921,9 +1022,15 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
         precalculated_matrices = [final_distribution]
         for idx, gap_idx in enumerate(reversed(gap_list[1:])):  # we only need n-1 matrices (n is the len of the gap)
             precalculated_matrices.append(
-                transition_matrix_to_sparse(get_transition_matrix(gap_idx)) * precalculated_matrices[-1])
+                transition_matrix_to_sparse(get_transition_matrix(gap_idx)) @ precalculated_matrices[-1])
 
         precalculated_matrices.reverse()  # the first pitch needs the largest product
+
+        #start_m = transition_matrix_to_sparse(get_transition_matrix(4))
+        #for idx in range(15):
+        #    a, b = start_m.shape
+        #    print(f"Nonzero entries {idx}", start_m.nnz/a/b*100, "%", start_m.nnz, print(a*b))
+        #    start_m = start_m * transition_matrix_to_sparse(get_transition_matrix(idx+5))
 
         final_condition_triples = []
         for state in itertools.product(*[allowed_suzipu_list for idx in range(2)]):
@@ -1138,7 +1245,7 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
 
         description_string += text_resources.EnglishTexts.first_stanza_pitch_initial_state_without_repetition.format(
             probability=first_init_prob*100,
-            cadential_phrase=generated_piece[pian_idx:pian_idx + 3]
+            cadential_phrase=generated_piece[pian_idx:pian_idx + 3][::-1]
         ) + " "
 
         # get all gaps
@@ -1294,12 +1401,22 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
     }
 
 
-def generate_secondary(initial_state_distributions, zhe_ye_distributions, secondary_group_distributions, secondary_transition_probabilities, cipai, repetition, pitch):
+def generate_secondary(initial_state_distributions, zhe_ye_distributions, secondary_group_distributions, secondary_transition_probabilities, cipai, repetition, pitch_functions):
     cipai_meter = cipai["meter"]
     generated_piece = [None] * len(cipai_meter)
 
     retrograde_meter = cipai["meter"][::-1]
-    retrograde_repetition = repetition[::-1]
+    retrograde_repetition = repetition["repetition"][::-1]
+
+    retrograde_pitch_functions = pitch_functions[::-1]
+
+    def secondary_mapping(symbol):
+        if symbol == "ZHE":
+            return "ZHE"
+        elif symbol == "YE":
+            return "YE"
+        else:
+            return "any"
 
     if np.random.rand() < 5/17:
         final_secondary = SuzipuSecondarySymbol.ADD_XIAO_ZHU
@@ -1308,160 +1425,141 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         final_secondary = SuzipuSecondarySymbol.ADD_DA_DUN
         final_p = 12/17
 
+    secondary_transition_probabilities = extend_to_zhe_ye(secondary_transition_probabilities["base"][final_secondary])
+
     description_string = EnglishTexts.second_stanza_secondary_final.format(final_secondary=final_secondary, probability=final_p*100) + " "
 
     secondary_initial_state = get_secondary_initial_state(
         initial_state_distributions=initial_state_distributions,
-        final_secondary=final_secondary
+        final_secondary=final_secondary,
+        zhe_ye_distributions=zhe_ye_distributions,
+        retrograde_pitch_functions=retrograde_pitch_functions
     )
     description_string += secondary_initial_state["description"] + " "
     probability = secondary_initial_state["probability"]
     secondary_initial_state = secondary_initial_state["initial_state"]
 
-    return {"description": description_string, "probability": probability, "secondary_list": [None]*len(cipai_meter)}
-
     pian_idx = retrograde_meter.index("pian")
 
-    def get_contour(current_triple):
-        def inner(pitch):
-            try:
-                val = int(np.sign(
-                    relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [current_triple[2], pitch])[
-                        0]))
-                if val == 0:  # 0 must not occur in the dicts, so choose some value
-                    val = -1
-                return val
-            except TypeError:  # can occur when interval of nonexistent pitch is calculated
-                return None
-        return inner
-
-    def get_current_pitch_distribution(idx, current_triple):
+    def get_current_secondary_distribution(idx, current_triple):
         # get the correct distribution of pitches for generating the idx-th position
-        def get_function_from_pitch(pitch):
-            return f_N_to_S(pitch, mode["mgong"])
+        def get_function_from_secondary(secondary):
+            return SuzipuSecondarySymbol.to_function(secondary)
+
+        next_secondary_distribution = secondary_transition_probabilities[current_triple]
+        functions = tuple(retrograde_pitch_functions[idx-1:idx+1])
+        next_secondary_distribution = reweight_zhe_ye(next_secondary_distribution, zhe_ye_distributions["base"][functions])
 
         if idx in (len(generated_piece) - 1, pian_idx - 1):  # First note of each stanza
-            next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][current_triple]
             try:
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["beginning"],
-                    get_function_from_pitch
+                distr = next_secondary_distribution.get_conditioned_on_Q(
+                    secondary_group_distributions[final_secondary]["beginning"],
+                    get_function_from_secondary
                 )
             except ZeroDivisionError:
-                distr = next_pitch_distribution
+                distr = next_secondary_distribution
         elif cipai["meter"][::-1][idx] == "ju": # ju position
-            next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][current_triple]
             try:
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["ju"],
-                    get_function_from_pitch
+                distr = next_secondary_distribution.get_conditioned_on_Q(
+                    secondary_group_distributions[final_secondary]["ju"],
+                    get_function_from_secondary
                 )
             except ZeroDivisionError:
-                distr = next_pitch_distribution
+                distr = next_secondary_distribution
         elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "ju": # one after ju position
-            next_pitch_distribution = pitch_transition_probabilities["base"][mfinal][mgong][current_triple]
             try:
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_ju"],
-                    get_function_from_pitch
+                distr = next_secondary_distribution.get_conditioned_on_Q(
+                    secondary_group_distributions[final_secondary]["after_ju"],
+                    get_function_from_secondary
                 )
             except ZeroDivisionError:
-                distr = next_pitch_distribution
+                distr = next_secondary_distribution
         elif cipai["meter"][::-1][idx] == "dou": # dou position
-            next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][current_triple]
             try:
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["dou"],
-                    get_function_from_pitch
+                distr = next_secondary_distribution.get_conditioned_on_Q(
+                    secondary_group_distributions[final_secondary]["dou"],
+                    get_function_from_secondary
                 )
             except ZeroDivisionError:
-                distr = next_pitch_distribution
+                distr = next_secondary_distribution
         elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "dou": # one after dou position
-            next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][current_triple]
             try:
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_dou"],
-                    get_function_from_pitch
+                distr = next_secondary_distribution.get_conditioned_on_Q(
+                    secondary_group_distributions[final_secondary]["after_dou"],
+                    get_function_from_secondary
                 )
             except ZeroDivisionError:
-                distr = next_pitch_distribution
+                distr = next_secondary_distribution
         else:
-            distr = pitch_transition_probabilities["less_repetition"][mfinal][mgong][current_triple]
+            distr = next_secondary_distribution
 
-        last_contour = int(np.sign(relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [current_triple[1], current_triple[2]])[0]))
-        if last_contour == 0:  # if 0 contour, i.e., tone repetition, use the previous contour!
-            last_contour = int(np.sign(relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [current_triple[0], current_triple[1]])[0]))
-        try:
-            distr = distr.get_conditioned_on_Q(
-                contour_distributions[last_contour][tuple(retrograde_tones[idx-3:idx])],
-                get_contour(current_triple)
-            )
-        except ZeroDivisionError:
-            pass
 
         return distr
 
-    def get_allowed_suzipu_list():
-        allowed_suzipu_list = get_suzipu_pitches(mode["mgong"])
-        allowed_suzipu_list = [s for s in allowed_suzipu_list if s is not None]
-        return allowed_suzipu_list
+    def get_allowed_secondary_list():
+        forbidden_secondary = [] if final_secondary == SuzipuSecondarySymbol.ADD_DA_DUN else [SuzipuSecondarySymbol.ADD_DA_DUN, SuzipuSecondarySymbol.ADD_DA_ZHU]
+        allowed_secondary = [sec for sec in SimpleSecondaryList if sec not in forbidden_secondary]
+        return allowed_secondary
 
     # now, get all possibilities for the first stanza, calculate the likelihood and sample accordingly
-    allowed_suzipu_list = get_allowed_suzipu_list()
+    allowed_secondary_list = get_allowed_secondary_list()
 
     def get_transition_matrix(idx):
-        def get_function_from_pitch(pitch):
-            return f_N_to_S(pitch, mode["mgong"])
+        def get_function_from_secondary(secondary):
+            return SuzipuSecondarySymbol.to_function(secondary)
 
         distr_dict = {}
 
-        allowed_suzipu_list = get_allowed_suzipu_list()
+        allowed_secondary_list = get_allowed_secondary_list()
+        next_secondary_distribution = secondary_transition_probabilities[current_triple]
+        functions = tuple(retrograde_pitch_functions[idx - 1:idx + 1])
+        next_secondary_distribution = reweight_zhe_ye(next_secondary_distribution, zhe_ye_distributions["base"][functions])
 
-        for triple in itertools.product(*[allowed_suzipu_list for idx in range(3)]):
+        for triple in itertools.product(*[allowed_secondary_list for idx in range(3)]):
             if idx in (len(generated_piece) - 1, pian_idx - 1):  # First note of stanza
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["beginning"],
-                    get_function_from_pitch
-                )
+                try:
+                    distr = next_secondary_distribution.get_conditioned_on_Q(
+                        secondary_group_distributions[final_secondary]["beginning"],
+                        get_function_from_secondary
+                    )
+                except ZeroDivisionError:
+                    distr = next_secondary_distribution
             elif cipai["meter"][::-1][idx] == "ju": # Generate a ju
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["ju"],
-                    get_function_from_pitch
-                )
+                try:
+                    distr = next_secondary_distribution.get_conditioned_on_Q(
+                        secondary_group_distributions[final_secondary]["ju"],
+                        get_function_from_secondary
+                    )
+                except ZeroDivisionError:
+                    distr = next_secondary_distribution
             elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "ju": # Generate one after a ju
-                next_pitch_distribution = pitch_transition_probabilities["base"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_ju"],
-                    get_function_from_pitch
-                )
+                try:
+                    distr = next_secondary_distribution.get_conditioned_on_Q(
+                        secondary_group_distributions[final_secondary]["after_ju"],
+                        get_function_from_secondary
+                    )
+                except ZeroDivisionError:
+                    distr = next_secondary_distribution
             elif cipai["meter"][::-1][idx] == "dou": # Generate dou
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["dou"],
-                    get_function_from_pitch
-                )
+                try:
+                    distr = next_secondary_distribution.get_conditioned_on_Q(
+                        secondary_group_distributions[final_secondary]["dou"],
+                        get_function_from_secondary
+                    )
+                except ZeroDivisionError:
+                    distr = next_secondary_distribution
             elif idx < len(generated_piece) - 1 and cipai["meter"][::-1][idx + 1] == "dou": # Generate one after dou
-                next_pitch_distribution = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
-                distr = next_pitch_distribution.get_conditioned_on_Q(
-                    function_distributions[mfinal]["after_dou"],
-                    get_function_from_pitch
-                )
+                try:
+                    distr = next_secondary_distribution.get_conditioned_on_Q(
+                        secondary_group_distributions[final_secondary]["after_dou"],
+                        get_function_from_secondary
+                    )
+                except ZeroDivisionError:
+                    distr = next_secondary_distribution
             else:
-                distr = pitch_transition_probabilities["less_repetition"][mfinal][mgong][triple]
+                distr = next_secondary_distribution
 
-            last_contour = int(np.sign(
-                relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [triple[1], triple[2]])[0]))
-            if last_contour == 0:  # if 0 contour, i.e., tone repetition, use the previous contour!
-                last_contour = new_last_contour = int(np.sign(
-                    relative_pitch_to_interval({"gong_lvlv": mode["mgong"]}, [triple[0], triple[1]])[
-                        0]))
-            distr = distr.get_conditioned_on_Q(
-                contour_distributions[last_contour][tuple(retrograde_tones[idx-3:idx])],
-                get_contour(triple)
-            )
-            distr_dict[triple] = distr.restrict_space(allowed_suzipu_list)
+            distr_dict[triple] = distr.restrict_space(allowed_secondary_list)
 
         return distr_dict
 
@@ -1475,20 +1573,20 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         return sp.csr_matrix(([1]*len(indices), (indices, [0]*len(indices))), shape=(dim, 1))
 
     def transition_matrix_to_sparse(transition_matrix):
-        allowed_suzipu_list = get_allowed_suzipu_list()
+        allowed_secondary_list = get_allowed_secondary_list()
 
         rows, cols, values = [], [], []
-        for start_state in itertools.product(*[allowed_suzipu_list for idx in range(3)]):
-            start_state_encoding = encode_triple(allowed_suzipu_list, start_state)
+        for start_state in itertools.product(*[allowed_secondary_list for idx in range(3)]):
+            start_state_encoding = encode_triple(allowed_secondary_list, start_state)
             for final_state in transition_matrix[start_state].sample_space():
                 state_probability = transition_matrix[start_state][final_state]
-                final_state_encoding = encode_triple(allowed_suzipu_list, [start_state[1], start_state[2], final_state])
+                final_state_encoding = encode_triple(allowed_secondary_list, [start_state[1], start_state[2], final_state])
                 if state_probability > 1e-10:
                     rows.append(start_state_encoding)
                     cols.append(final_state_encoding)
                     values.append(state_probability)
 
-        return sp.csr_matrix((values, (rows, cols)), shape=(len(allowed_suzipu_list)*len(allowed_suzipu_list)*len(allowed_suzipu_list), len(allowed_suzipu_list)*len(allowed_suzipu_list)*len(allowed_suzipu_list)))
+        return sp.csr_matrix((values, (rows, cols)), shape=(len(allowed_secondary_list)*len(allowed_secondary_list)*len(allowed_secondary_list), len(allowed_secondary_list)*len(allowed_secondary_list)*len(allowed_secondary_list)))
 
     def fill_by_using_matrix_products(gap_list):
         final_index = gap_list[-1]
@@ -1506,7 +1604,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     three_after[key] = three_after[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 3] else 0. for
-                             final_val in allowed_suzipu_list}),
+                             final_val in allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1520,7 +1618,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     two_after[key] = two_after[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 2] else 0. for
-                             final_val in allowed_suzipu_list}),
+                             final_val in allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1534,7 +1632,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     one_after[key] = one_after[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 1] else 0.
-                             for final_val in allowed_suzipu_list}),
+                             for final_val in allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1542,8 +1640,8 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                         one_after[key].distribution[
                             final_key] = 0.  # this is no probability matrix, so if we calculate it later and the result is zero we can discard the result
 
-            final_distribution = transition_matrix_to_sparse(one_after) * transition_matrix_to_sparse(
-                two_after) * transition_matrix_to_sparse(three_after)
+            final_distribution = transition_matrix_to_sparse(one_after) @ transition_matrix_to_sparse(
+                two_after) @ transition_matrix_to_sparse(three_after)
         # case 2: we condition on two final values
         elif final_index < len(generated_piece) - 2 and None not in generated_piece[final_index + 1:final_index + 3]:
             final_condition = generated_piece[final_index + 2]
@@ -1553,7 +1651,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     two_after[key] = two_after[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 2] else 0. for
-                             final_val in allowed_suzipu_list}),
+                             final_val in allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1567,7 +1665,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     one_after[key] = one_after[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 1] else 0.
-                             for final_val in allowed_suzipu_list}),
+                             for final_val in allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1575,7 +1673,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                         one_after[key].distribution[
                             final_key] = 0.  # this is no probability matrix, so if we calculate it later and the result is zero we can discard the result
 
-            final_distribution = transition_matrix_to_sparse(one_after) * transition_matrix_to_sparse(two_after)
+            final_distribution = transition_matrix_to_sparse(one_after) @ transition_matrix_to_sparse(two_after)
 
         # case 3: we only condition on one final value
         elif final_index < len(generated_piece) - 1 and None not in generated_piece[final_index + 1:final_index + 2]:
@@ -1586,7 +1684,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     final_distribution[key] = final_distribution[key].get_conditioned_on_Q(
                         Distribution.from_dict(
                             {final_val: 1. if final_val == generated_piece[final_index + 1] else 0. for final_val in
-                             allowed_suzipu_list}),
+                             allowed_secondary_list}),
                         lambda final_val: final_val
                     )
                 except ZeroDivisionError:
@@ -1600,7 +1698,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
             idx = gap_list[0]
             while idx < final_index + 1:
                 current_triple = tuple(generated_piece[idx - 3:idx])
-                distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                 generated_piece[idx] = distr.sample()
                 p *= distr[generated_piece[idx]]
                 idx += 1
@@ -1610,28 +1708,28 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         precalculated_matrices = [final_distribution]
         for idx, gap_idx in enumerate(reversed(gap_list[1:])):  # we only need n-1 matrices (n is the len of the gap)
             precalculated_matrices.append(
-                transition_matrix_to_sparse(get_transition_matrix(gap_idx)) * precalculated_matrices[-1])
+                transition_matrix_to_sparse(get_transition_matrix(gap_idx)) @ precalculated_matrices[-1])
 
         precalculated_matrices.reverse()  # the first pitch needs the largest product
 
         final_condition_triples = []
-        for state in itertools.product(*[allowed_suzipu_list for idx in range(2)]):
-            final_condition_triples.append(encode_triple(allowed_suzipu_list, [state[0], state[1], final_condition]))
-        final_condition_vector = get_sparse_unit_vector(len(allowed_suzipu_list) ** 3, final_condition_triples)
+        for state in itertools.product(*[allowed_secondary_list for idx in range(2)]):
+            final_condition_triples.append(encode_triple(allowed_secondary_list, [state[0], state[1], final_condition]))
+        final_condition_vector = get_sparse_unit_vector(len(allowed_secondary_list) ** 3, final_condition_triples)
 
         # now, sample a suitable pitch for each gap_idx to fill the gap!
         for idx, gap_idx in enumerate(gap_list):
             pitch_likelihoods = []
-            for new_pitch in allowed_suzipu_list:
-                start_encoding = encode_triple(allowed_suzipu_list, generated_piece[gap_idx - 3:gap_idx])
-                new_state_encoding = encode_triple(allowed_suzipu_list, tuple(
+            for new_pitch in allowed_secondary_list:
+                start_encoding = encode_triple(allowed_secondary_list, generated_piece[gap_idx - 3:gap_idx])
+                new_state_encoding = encode_triple(allowed_secondary_list, tuple(
                     [generated_piece[gap_idx - 2], generated_piece[gap_idx - 1], new_pitch]))
                 pitch_likelihoods.append(
                     transition_matrix_to_sparse(get_transition_matrix(gap_idx))[start_encoding, new_state_encoding] * (
-                                get_sparse_unit_vector(len(allowed_suzipu_list) ** 3,
+                                get_sparse_unit_vector(len(allowed_secondary_list) ** 3,
                                                        [new_state_encoding]).transpose() * precalculated_matrices[
                                     idx] * final_condition_vector)[0, 0])
-            pitch_distribution = Distribution(allowed_suzipu_list, pitch_likelihoods)
+            pitch_distribution = Distribution(allowed_secondary_list, pitch_likelihoods)
             generated_piece[gap_idx] = pitch_distribution.sample()
             p *= pitch_distribution[generated_piece[gap_idx]]
         return p
@@ -1645,9 +1743,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
 
             if depth > 0:
                 index = gap_list[depth - 1]
-                current_prob *= \
-                get_current_pitch_distribution(idx=index, current_triple=tuple(generated_piece[index - 3:index]))[
-                    generated_piece[index]]
+                current_prob *= get_current_secondary_distribution(idx=index, current_triple=tuple(generated_piece[index - 3:index]))[generated_piece[index]]
 
             if depth == len(gap_list):
                 index = gap_list[depth - 1]
@@ -1655,7 +1751,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                         generated_piece[
                             index + 1] is not None:  # also incorporate final state into probability calculation
                     try:
-                        current_prob *= get_current_pitch_distribution(idx=index + 1, current_triple=tuple(
+                        current_prob *= get_current_secondary_distribution(idx=index + 1, current_triple=tuple(
                             generated_piece[index - 2:index + 1]))[generated_piece[index + 1]]
                     except ZeroDivisionError:
                         current_prob = 0.
@@ -1663,7 +1759,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                         generated_piece[
                             index + 2] is not None:  # also incorporate final state into probability calculation
                     try:
-                        current_prob *= get_current_pitch_distribution(idx=index + 2, current_triple=tuple(
+                        current_prob *= get_current_secondary_distribution(idx=index + 2, current_triple=tuple(
                             generated_piece[index - 1:index + 2]))[generated_piece[index + 2]]
                     except ZeroDivisionError:
                         current_prob = 0.
@@ -1672,7 +1768,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     probable_likelihoods.append(current_prob)
             else:
                 if current_prob > 1e-10:
-                    for option in allowed_suzipu_list:
+                    for option in allowed_secondary_list:
                         new_trajectory = current_trajectory + (option,)
                         generated_piece[gap_list[depth]] = option
                         recursive_traverse(new_trajectory, depth + 1, start_probability=current_prob)  # Recurse further
@@ -1703,22 +1799,22 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     break
                 else:
                     current_triple = tuple(generated_piece[idx - 3:idx])
-                    distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                    distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                     generated_piece[idx] = distr.sample()
                     stanza_probability *= distr[generated_piece[idx]]
                     idx += 1
 
-        first_stanza_initial = get_pitch_initial_state(
+        first_stanza_initial = get_secondary_initial_state(
             initial_state_distributions=initial_state_distributions,
-            contour_distributions=contour_distributions,
-            cipai=cipai,
-            mode=mode,
-            start_idx=pian_idx
+            final_secondary=final_secondary,
+            start_idx=pian_idx,
+            zhe_ye_distributions=zhe_ye_distributions,
+            retrograde_pitch_functions=retrograde_pitch_functions
         )
-
         description_string += first_stanza_initial["description_first"] + " "
         probability *= first_stanza_initial["probability"]
         first_stanza_initial = first_stanza_initial["initial_state"]
+
         # Generate first stanza
         while idx < len(generated_piece):
             if idx == pian_idx:  # ending of stanza
@@ -1726,12 +1822,12 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                 idx += 3
             else:
                 current_triple = tuple(generated_piece[idx - 3:idx])
-                distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                 generated_piece[idx] = distr.sample()
                 stanza_probability *= distr[generated_piece[idx]]
                 idx += 1
 
-        description_string += text_resources.EnglishTexts.both_stanzas_pitch_no_repetition_case.format(
+        description_string += text_resources.EnglishTexts.both_stanzas_secondary_no_repetition_case.format(
             probability=stanza_probability
         ) + "\n\n"
 
@@ -1749,13 +1845,13 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                     break
                 else:
                     current_triple = tuple(generated_piece[idx - 3:idx])
-                    distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                    distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                     generated_piece[idx] = distr.sample()
                     second_stanza_probability *= distr[generated_piece[idx]]
                     idx += 1
 
         probability *= second_stanza_probability
-        description_string += text_resources.EnglishTexts.second_stanza_pitch_normal_case.format(
+        description_string += text_resources.EnglishTexts.second_stanza_secondary_normal_case.format(
             probability=second_stanza_probability
         ) + " "
 
@@ -1774,11 +1870,11 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         first_stanza_need_to_fill_idxs = [i+pian_idx for i, x in enumerate(first_stanza_repetitions) if x != "r" and i not in [0, 1, 2]]  # starting triple will be available later
         first_stanza_ending = retrograde_repetition[pian_idx:pian_idx+3]
 
-        initial_prob = get_pitch_initial_state_probabilities(
+        initial_prob = get_secondary_initial_state_probabilities(
             initial_state_distributions=initial_state_distributions,
-            contour_distributions=contour_distributions,
-            cipai=cipai,
-            mode=mode
+            final_secondary=final_secondary,
+            retrograde_pitch_functions=retrograde_pitch_functions,
+            zhe_ye_distributions=zhe_ye_distributions
         )
         initial_dist = initial_prob
         # first one is always final note, so look at first two of ending triple of first stanza
@@ -1825,9 +1921,9 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         first_init_prob = initial_dist[tuple(generated_piece[pian_idx:pian_idx + 3])]
         probability *= first_init_prob
 
-        description_string += text_resources.EnglishTexts.first_stanza_pitch_initial_state_without_repetition.format(
+        description_string += text_resources.EnglishTexts.first_stanza_secondary_initial_state_without_repetition.format(
             probability=first_init_prob*100,
-            cadential_phrase=generated_piece[pian_idx:pian_idx + 3]
+            cadential_phrase=generated_piece[pian_idx:pian_idx + 3][::-1]
         ) + " "
 
         # get all gaps
@@ -1844,7 +1940,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
             else:
                 first_stanza_probability *= fill_by_using_matrix_products(gap_list)
 
-        description_string += text_resources.EnglishTexts.first_stanza_pitch_normal_case.format(
+        description_string += text_resources.EnglishTexts.first_stanza_secondary_normal_case.format(
             probability=first_stanza_probability
         ) + "\n\n"
 
@@ -1866,12 +1962,12 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                 idx += 3
             else:
                 current_triple = tuple(generated_piece[idx - 3:idx])
-                distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                 generated_piece[idx] = distr.sample()
                 cd_probability *= distr[generated_piece[idx]]
                 idx += 1
 
-        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_cd.format(
+        description_string += text_resources.EnglishTexts.second_stanza_secondary_intrastrophal_case_cd.format(
             probability = cd_probability
         ) + " "
 
@@ -1884,12 +1980,12 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         # Generate B part in CB. By construction of the repetition, the B part is at least 3 syllables long,
         # so we generate a cadential phrase for the ending of the first stanza.
 
-        first_stanza_initial = get_pitch_initial_state(
+        first_stanza_initial = get_secondary_initial_state(
             initial_state_distributions=initial_state_distributions,
-            contour_distributions=contour_distributions,
-            cipai=cipai,
-            mode=mode,
-            start_idx=pian_idx
+            final_secondary=final_secondary,
+            start_idx=pian_idx,
+            zhe_ye_distributions=zhe_ye_distributions,
+            retrograde_pitch_functions=retrograde_pitch_functions
         )
 
         b_ending_probability = first_stanza_initial["probability"]
@@ -1927,7 +2023,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                 idx = gap_list[0]
                 while idx <= gap_list[-1]:
                     current_triple = tuple(generated_piece[idx - 3:idx])
-                    distr = get_current_pitch_distribution(idx=idx, current_triple=current_triple)
+                    distr = get_current_secondary_distribution(idx=idx, current_triple=current_triple)
                     generated_piece[idx] = distr.sample()
                     cb_probability *= distr[generated_piece[idx]]
                     idx += 1
@@ -1936,7 +2032,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
             else:
                 cb_probability *= fill_by_using_matrix_products(gap_list)
 
-        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_cb.format(
+        description_string += text_resources.EnglishTexts.second_stanza_secondary_intrastrophal_case_cb.format(
             cadential_phrase=first_stanza_initial,
             cadential_probability=b_ending_probability*100,
             pitch_probability=cb_probability
@@ -1968,7 +2064,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         for a_idx_first, a_idx_last in zip(a_idxs_ab_first, a_idxs_ab_last):
             generated_piece[a_idx_first] = generated_piece[a_idx_last]
 
-        description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_ab.format(
+        description_string += text_resources.EnglishTexts.second_stanza_secondary_intrastrophal_case_ab.format(
             probability=ab_probability
         ) + "\n\n"
 
@@ -1977,7 +2073,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
 
     generated_piece.reverse()
     return {
-        "pitch_list": generated_piece,
+        "secondary_list": generated_piece,
         "description": description_string,
         "probability": probability
     }

@@ -673,3 +673,11 @@ def relative_pitch_to_absolute_pitch(mode_properties, relative_pitch_list):
     for pitch in relative_pitch_list:
         absolute_pitch_list.append(tone_inventory_convert_pitch(mode_properties["gong_lvlv"], pitch))
     return absolute_pitch_list
+
+
+def absolute_pitch_to_function(mode_properties, absolute_pitch_list):
+    tone_inventory = get_tone_inventory(mode_properties["gong_lvlv"])
+    function_list = []
+    for pitch in absolute_pitch_list:
+        function_list.append(tone_inventory[GongcheMelodySymbol.to_index(pitch)])
+    return function_list
