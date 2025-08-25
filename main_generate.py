@@ -85,6 +85,11 @@ def generate(cipai, pieces):
     print(pitch_repetition["repetition"])
     print(secondary_repetition["repetition"])
 
+    #mode = pieces["all"][2]["mode_properties"]
+    #mode = {"mgong": mode["gong_lvlv"], "mfinal": mode["final_note"]}
+    #pitch = {"pitch_list": [x["pitch"] for x in pieces["all"][2]["music"]["suzipu"]]}
+    #secondary = {"secondary_list": [x["secondary"] for x in pieces["all"][2]["music"]["suzipu"]]}
+
     with open("output.txt", "w") as file:
         file.write(description_string)
 
@@ -95,4 +100,4 @@ def generate(cipai, pieces):
 
 if __name__ == "__main__":
     pieces = load_17_pieces_data()
-    generate(pieces["all"][0]["cipai"], pieces)
+    generate(pieces["all"][2]["cipai"], pieces)
