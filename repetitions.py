@@ -438,8 +438,12 @@ def generate_repetition(input_cipai):
                     len(first_indices_b) != len(second_indices_b) or \
                     len(first_indices_c) != len(second_indices_c) or \
                     len(first_indices_d) != len(second_indices_d):  # make sure that the repetition structure is valid!
-                return ["." for idx, t in enumerate(input_cipai["tones"])]
-            description_string = EnglishTexts.repetitions_intrastrophal.format(tonal_agreement=tonal_agreement*100)
+                description_string = EnglishTexts.repetitions_none.format(prob=2 / 17 * 100)
+                return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
+            description_string = EnglishTexts.repetitions_intrastrophal.format(tonal_agreement=tonal_agreement*100) + " "
+            description_string += EnglishTexts.repetitions_visualization + "\n\n"
+            description_string += "    " + first_stanza + "\n"
+            description_string += "    " + second_stanza_1_c + second_stanza_1_b + second_stanza_2_c + second_stanza_2_d
             return {"repetition": list(first_stanza + second_stanza_1_c + second_stanza_1_b + second_stanza_2_c + second_stanza_2_d), "description": description_string}
 
     # Geximeiling case with parallel stanzas and high degree of tone compatibility
@@ -471,9 +475,13 @@ def generate_repetition(input_cipai):
         first_indices = [idx for idx, r_str in enumerate(cipai_first) if r_str == "r"]
         second_indices = [idx for idx, r_str in enumerate(cipai_second) if r_str == "r"]
         if len(first_indices) != len(second_indices):  # make sure that the repetition structure is valid!
-            return ["." for idx, t in enumerate(cipai["tones"])]
+            description_string = EnglishTexts.repetitions_none.format(prob=2 / 17 * 100)
+            return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
 
-        description_string = EnglishTexts.repetitions_similar_strophes.format(tonal_agreement=tonal_agreement*100)
+        description_string = EnglishTexts.repetitions_similar_strophes.format(tonal_agreement=tonal_agreement*100) + " "
+        description_string += EnglishTexts.repetitions_visualization + "\n\n"
+        description_string += "    " + cipai_first + "\n"
+        description_string += "    " + cipai_second
         return {"repetition": list(cipai_str), "description": description_string}
 
     # Xinghuatianying, Zuiyinshangxiaopin case with parallel stanzas and lower degree of tone compatibility
@@ -517,9 +525,13 @@ def generate_repetition(input_cipai):
         first_indices = [idx for idx, r_str in enumerate(cipai_first) if r_str == "r"]
         second_indices = [idx for idx, r_str in enumerate(cipai_second) if r_str == "r"]
         if len(first_indices) != len(second_indices):  # make sure that the repetition structure is valid!
-            return ["." for idx, t in enumerate(cipai["tones"])]
+            description_string = EnglishTexts.repetitions_none.format(prob=2 / 17 * 100)
+            return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
 
-        description_string = EnglishTexts.repetitions_not_so_similar_strophes.format(tonal_agreement=tonal_agreement * 100)
+        description_string = EnglishTexts.repetitions_not_so_similar_strophes.format(tonal_agreement=tonal_agreement * 100) + " "
+        description_string += EnglishTexts.repetitions_visualization + "\n\n"
+        description_string += "    " + cipai_first + "\n"
+        description_string += "    " + cipai_second
         return {"repetition": list(cipai_str), "description": description_string}
     else: # non-parallel stanzas case
         def recursive_repetitions(first_cipai, second_cipai, return_raw_indices=False):
@@ -581,7 +593,8 @@ def generate_repetition(input_cipai):
 
         first_idxs, second_idxs = recursive_repetitions(first_stanza_cipai, second_stanza_cipai)
         if not first_idxs:
-            return ["." for idx, t in enumerate(input_cipai["tones"])]
+            description_string = EnglishTexts.repetitions_none.format(prob=2 / 17 * 100)
+            return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
 
         full_seq = first_idxs + second_idxs
 
@@ -653,6 +666,11 @@ def generate_repetition(input_cipai):
         first_indices = [idx for idx, r_str in enumerate(cipai_first) if r_str == "r"]
         second_indices = [idx for idx, r_str in enumerate(cipai_second) if r_str == "r"]
         if len(first_indices) != len(second_indices):  # make sure that the repetition structure is valid!
-            return ["." for idx, t in enumerate(cipai["tones"])]
-        description_string = EnglishTexts.repetitions_default
+            description_string = EnglishTexts.repetitions_none.format(prob=2 / 17 * 100)
+            return {"repetition": ["."] * len(input_cipai["tones"]), "description": description_string}
+        description_string = EnglishTexts.repetitions_default + " "
+
+        description_string += EnglishTexts.repetitions_visualization + "\n\n"
+        description_string += "    " + cipai_first + "\n"
+        description_string += "    " + cipai_second
         return {"repetition": list(cipai_first + cipai_second), "description": description_string}

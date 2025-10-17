@@ -1151,7 +1151,7 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
 
         description_string += text_resources.EnglishTexts.both_stanzas_pitch_no_repetition_case.format(
             probability=stanza_probability
-        ) + "\n\n"
+        )
 
         probability *= stanza_probability
     elif not "1" in repetition["repetition"]:  # inter-strophal repetitions case. the intra-strophal repetitions must be treated separately
@@ -1207,7 +1207,7 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
                         Distribution.from_dict({suzipu: 1. if suzipu==generated_piece[pian_idx+1] else 0. for suzipu in SimplePitchList}),
                         lambda tuple: tuple[1]
                     )
-                except Exception:
+                except Exception as e:
                     try: # do not repeat everything, try out [final, ., r]
                         initial_dist = initial_prob.get_conditioned_on_Q(
                             Distribution.from_dict(
@@ -1217,6 +1217,8 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
                         )
                     except Exception:  # if nothing works, resample completely
                         initial_dist = initial_prob
+            else:  # if permissible, just take the triple from the repetition
+                initial_dist = Distribution(sample_space=[pitch_initial_state], absolute_frequencies=[1.])
         elif first_stanza_ending[1] == "r": # [final, r, .] case
             try:
                 initial_dist = initial_prob.get_conditioned_on_Q(
@@ -1249,24 +1251,25 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
         ) + " "
 
         # get all gaps
-        first_stanza_idx_groups = [[first_stanza_need_to_fill_idxs[0]]]
-        for idx in range(len(first_stanza_need_to_fill_idxs) - 1):
-            if first_stanza_need_to_fill_idxs[idx+1] != first_stanza_need_to_fill_idxs[idx] + 1:
-                first_stanza_idx_groups.append([])
-            first_stanza_idx_groups[-1].append(first_stanza_need_to_fill_idxs[idx+1])
-
         first_stanza_probability = 1.
-        for gap_list in first_stanza_idx_groups:
-            if len(gap_list) <= 4:
-                first_stanza_probability *= fill_by_sampling_all_trajectories(gap_list)
-            else:
-                first_stanza_probability *= fill_by_using_matrix_products(gap_list)
+        if len(first_stanza_need_to_fill_idxs) > 0:
+            first_stanza_idx_groups = [[first_stanza_need_to_fill_idxs[0]]]
+            for idx in range(len(first_stanza_need_to_fill_idxs) - 1):
+                if first_stanza_need_to_fill_idxs[idx+1] != first_stanza_need_to_fill_idxs[idx] + 1:
+                    first_stanza_idx_groups.append([])
+                first_stanza_idx_groups[-1].append(first_stanza_need_to_fill_idxs[idx+1])
 
-        description_string += text_resources.EnglishTexts.first_stanza_pitch_normal_case.format(
-            probability=first_stanza_probability
-        ) + "\n\n"
+            for gap_list in first_stanza_idx_groups:
+                if len(gap_list) <= 4:
+                    first_stanza_probability *= fill_by_sampling_all_trajectories(gap_list)
+                else:
+                    first_stanza_probability *= fill_by_using_matrix_products(gap_list)
 
-        probability *= first_stanza_probability
+            description_string += text_resources.EnglishTexts.first_stanza_pitch_normal_case.format(
+                probability=first_stanza_probability
+            )
+
+            probability *= first_stanza_probability
 
     else:  # Qiuxiaoyin case (ABAB/CBCD structure)
         second_stanza_indices = range(len(generated_piece))[0:pian_idx]
@@ -1388,7 +1391,7 @@ def generate_pitch(initial_state_distributions, contour_distributions, function_
 
         description_string += text_resources.EnglishTexts.second_stanza_pitch_intrastrophal_case_ab.format(
             probability=ab_probability
-        ) + "\n\n"
+        )
 
         probability *= cd_probability * b_ending_probability * cb_probability * ab_probability
 
@@ -1829,7 +1832,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
 
         description_string += text_resources.EnglishTexts.both_stanzas_secondary_no_repetition_case.format(
             probability=stanza_probability
-        ) + "\n\n"
+        )
 
         probability *= stanza_probability
     elif not "1" in repetition["repetition"]:  # inter-strophal repetitions case. the intra-strophal repetitions must be treated separately
@@ -1895,6 +1898,9 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
                         )
                     except Exception:  # if nothing works, resample completely
                         initial_dist = initial_prob
+            else:  # if permissible, just take the triple from the repetition
+                initial_dist = Distribution(sample_space=[secondary_initial_state],
+                                                    absolute_frequencies=[1.])
         elif first_stanza_ending[1] == "r": # [final, r, .] case
             try:
                 initial_dist = initial_prob.get_conditioned_on_Q(
@@ -1927,22 +1933,23 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
         ) + " "
 
         # get all gaps
-        first_stanza_idx_groups = [[first_stanza_need_to_fill_idxs[0]]]
-        for idx in range(len(first_stanza_need_to_fill_idxs) - 1):
-            if first_stanza_need_to_fill_idxs[idx+1] != first_stanza_need_to_fill_idxs[idx] + 1:
-                first_stanza_idx_groups.append([])
-            first_stanza_idx_groups[-1].append(first_stanza_need_to_fill_idxs[idx+1])
-
         first_stanza_probability = 1.
-        for gap_list in first_stanza_idx_groups:
-            if len(gap_list) <= 4:
-                first_stanza_probability *= fill_by_sampling_all_trajectories(gap_list)
-            else:
-                first_stanza_probability *= fill_by_using_matrix_products(gap_list)
+        if len(first_stanza_need_to_fill_idxs) > 0:
+            first_stanza_idx_groups = [[first_stanza_need_to_fill_idxs[0]]]
+            for idx in range(len(first_stanza_need_to_fill_idxs) - 1):
+                if first_stanza_need_to_fill_idxs[idx+1] != first_stanza_need_to_fill_idxs[idx] + 1:
+                    first_stanza_idx_groups.append([])
+                first_stanza_idx_groups[-1].append(first_stanza_need_to_fill_idxs[idx+1])
 
-        description_string += text_resources.EnglishTexts.first_stanza_secondary_normal_case.format(
-            probability=first_stanza_probability
-        ) + "\n\n"
+            for gap_list in first_stanza_idx_groups:
+                if len(gap_list) <= 4:
+                    first_stanza_probability *= fill_by_sampling_all_trajectories(gap_list)
+                else:
+                    first_stanza_probability *= fill_by_using_matrix_products(gap_list)
+
+            description_string += text_resources.EnglishTexts.first_stanza_secondary_normal_case.format(
+                probability=first_stanza_probability
+            )
 
         probability *= first_stanza_probability
 
@@ -2066,7 +2073,7 @@ def generate_secondary(initial_state_distributions, zhe_ye_distributions, second
 
         description_string += text_resources.EnglishTexts.second_stanza_secondary_intrastrophal_case_ab.format(
             probability=ab_probability
-        ) + "\n\n"
+        )
 
         probability *= cd_probability * b_ending_probability * cb_probability * ab_probability
 

@@ -9,7 +9,38 @@ from music import get_tone_inventory, tone_inventory_convert_pitch, GongcheMelod
 from pitch_and_secondary import *
 
 
-def build_17_pieces_data():
+def cipai_string_to_properties(cipai_string: str):
+    stripped_content = cipai_string.replace(" ", "")
+
+    piece_tones = []
+    for character in stripped_content:
+        if character in ("z", "Z"):
+            piece_tones.append("ze")
+        elif character in ("p", "P"):
+            piece_tones.append("ping")
+
+    piece_meter = []
+    idx = 0
+    while idx < len(stripped_content):
+        character = stripped_content[idx]
+        next_character = stripped_content[idx + 1]
+        if idx < len(stripped_content) - 2 and stripped_content[idx + 2] == "/":
+            piece_meter.append("pian")
+            idx += 3
+        elif next_character in (".", ",", ":", ";", "!", "?", "。", "，", "！", "？", "：", "；"):
+            piece_meter.append("ju")
+            idx += 2
+        elif next_character in ("､", "、"):
+            piece_meter.append("dou")
+            idx += 2
+        else:
+            piece_meter.append("")
+            idx += 1
+
+    return {"tones": piece_tones, "meter": piece_meter}
+
+
+def build_17_pieces_data(kuiscima_repo_dir: str):
     def load_latinized_titles():
         with open('./cipai/repetition.txt') as csvfile:
             cipai_file = csv.reader(csvfile, delimiter=';')
@@ -28,35 +59,9 @@ def build_17_pieces_data():
 
             cipai_list = []
 
-            for piece in full_cipai:
-                stripped_content = piece[2].replace(" ", "")
-
-                piece_tones = []
-                for character in stripped_content:
-                    if character in ("z", "Z"):
-                        piece_tones.append("ze")
-                    elif character in ("p", "P"):
-                        piece_tones.append("ping")
-
-                piece_meter = []
-                idx = 0
-                while idx < len(stripped_content):
-                    character = stripped_content[idx]
-                    next_character = stripped_content[idx + 1]
-                    if idx < len(stripped_content) - 2 and stripped_content[idx + 2] == "/":
-                        piece_meter.append("pian")
-                        idx += 3
-                    elif next_character in ("。", "？", "，"):
-                        piece_meter.append("ju")
-                        idx += 2
-                    elif next_character == "、":
-                        piece_meter.append("dou")
-                        idx += 2
-                    else:
-                        piece_meter.append("")
-                        idx += 1
-
-                cipai_list.append({"tones": piece_tones, "meter": piece_meter})
+            for p in full_cipai:
+                cipai = cipai_string_to_properties(p[2])
+                cipai_list.append(cipai)
 
             return cipai_list
 
@@ -153,7 +158,7 @@ def build_17_pieces_data():
             del piece["content"]
             return piece
 
-    corpus_dir = "./KuiSCIMA/KuiSCIMA/symbolic_dataset/02_normalized_edition"
+    corpus_dir = os.path.join(kuiscima_repo_dir, "KuiSCIMA/symbolic_dataset/02_normalized_edition")
     json_files = get_folder_contents(corpus_dir, "json")
 
     all_cipai = load_cipai_file()
@@ -179,17 +184,17 @@ def build_17_pieces_data():
         pickle.dump(pieces, file_handle)
 
 
-def load_17_pieces_data():
+def load_17_pieces_data(kuiscima_repo_dir: str):
     if not os.path.exists("17_pieces_data.pkl"):
-        build_17_pieces_data()
+        build_17_pieces_data(kuiscima_repo_dir)
 
     with open("17_pieces_data.pkl", "rb") as file_handle:
         all_pieces = pickle.load(file_handle)
         all_pieces_yanyue = [piece for piece in all_pieces if piece["title"] not in ("角招", "徴招")]
         return {"all": all_pieces, "yanyue": all_pieces_yanyue}
 
-def load_probabilities():
-    pieces = load_17_pieces_data()
+def load_probabilities(kuiscima_repo_dir):
+    pieces = load_17_pieces_data(kuiscima_repo_dir)
     if not os.path.exists("probabilities.pkl"):
         pitch_contour_distributions = get_pitch_contour_distributions(pieces)
         pitch_initial_state_distributions = get_pitch_initial_state_distributions(pieces)

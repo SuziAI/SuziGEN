@@ -31,7 +31,14 @@ class EnglishTexts:
         "covers syllables in which the tonal agreement is high. In Baishidaoren Gequ, this is the "
         "case in most of the pieces."
     )
+    repetitions_visualization: str = (
+        "The repetitions can be visualized as follows, where the first and the second stanza are separated "
+        "through a line break:"
+    )
 
+    mode_already_given: str = (
+        "The mode is {chinese_name} ({name}) as indicated by the user."
+    )
     mode_name: str = (
         "For the mode, I chose {chinese_name} ({name}). I generate this in {probability:.1f}% of all cases. "
     )
